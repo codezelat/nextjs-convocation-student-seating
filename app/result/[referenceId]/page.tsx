@@ -26,6 +26,11 @@ export async function generateMetadata({
 }: ResultPageProps): Promise<Metadata> {
   const { referenceId } = await params;
   const encodedReference = encodeURIComponent(referenceId);
+  const seat = await findSeatByReference(decodeURIComponent(referenceId));
+  const shareName = formatShareName(seat?.stageAnnouncingName);
+  const title = shareName
+    ? `${shareName} - SITC Convocation 2026 Seating Pass`
+    : "SITC Convocation 2026 Seating Pass";
 
   return {
     title: `Seat Result ${referenceId.toUpperCase()}`,
@@ -34,7 +39,7 @@ export async function generateMetadata({
       canonical: `/result/${encodedReference}`,
     },
     openGraph: {
-      title: "SITC Convocation 2026 Seating Pass",
+      title,
       description: "A private, shareable seating pass for SITC Convocation 2026.",
       url: `/result/${encodedReference}`,
       type: "website",
@@ -49,7 +54,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: "SITC Convocation 2026 Seating Pass",
+      title,
       description: "A private, shareable seating pass for SITC Convocation 2026.",
       images: [`/result/${encodedReference}/twitter-image`],
     },
@@ -191,4 +196,30 @@ function formatBalconySeat(value: string) {
   return value.trim().toLowerCase().startsWith("balcony")
     ? value
     : `Balcony ${value}`;
+}
+
+function formatShareName(value?: string) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const graphemes = splitGraphemes(trimmed);
+  const maxLength = 42;
+
+  if (graphemes.length <= maxLength) {
+    return trimmed;
+  }
+
+  return `${graphemes.slice(0, maxLength - 1).join("").trim()}...`;
+}
+
+function splitGraphemes(value: string) {
+  if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
+    const segmenter = new Intl.Segmenter("si", { granularity: "grapheme" });
+    return Array.from(segmenter.segment(value), (segment) => segment.segment);
+  }
+
+  return Array.from(value);
 }

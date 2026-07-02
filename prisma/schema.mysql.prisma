@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid()) @db.VarChar(191)
+  email        String   @unique @db.VarChar(191)
+  passwordHash String   @db.VarChar(191)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StudentSeat {
+  id                    String   @id @default(cuid()) @db.VarChar(191)
+  referenceId           String   @unique @db.VarChar(191)
+  sessionNo             String   @db.VarChar(32)
+  studentId             String   @db.VarChar(191)
+  seatNo                String   @db.VarChar(32)
+  stageAnnouncingName   String   @db.VarChar(255)
+  ticketCategory        String   @db.VarChar(8)
+  balconyVisitorSeatNos String   @db.Text
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([sessionNo])
+  @@index([studentId])
+  @@index([seatNo])
+  @@index([ticketCategory])
+}

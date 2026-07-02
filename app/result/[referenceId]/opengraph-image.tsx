@@ -30,7 +30,7 @@ export default async function Image({ params }: ImageProps) {
   const seat = await findSeatByReference(decodeURIComponent(referenceId));
   const visitorSeats = seat?.balconyVisitorSeatNos.map(formatBalconySeat) ?? [];
   const stageName = formatStageName(seat?.stageAnnouncingName);
-  const stageNameLines = wrapText(stageName, 35, 2);
+  const stageNameLines = wrapText(stageName, 18, 2);
   const stageNameSize = splitGraphemes(stageName).length > 52 ? 30 : 35;
   const fonts = await getFontData();
   const svg = renderTicketSvg({
@@ -121,13 +121,12 @@ function renderTicketSvg({
         src: url(data:font/truetype;base64,${fonts.bold}) format('truetype');
         font-weight: 700;
       }
-      text { font-family: NotoSinhala, Arial, sans-serif; }
+      text { font-family: 'Noto Sans Sinhala', NotoSinhala, Arial, sans-serif; }
       .eyebrow { fill: #737373; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
-      .small { fill: #737373; font-size: 17px; font-weight: 700; letter-spacing: 1.5px; }
       .white-small { fill: #a3a3a3; font-size: 17px; font-weight: 700; letter-spacing: 1.5px; }
       .white-number { fill: #ffffff; font-size: 78px; font-weight: 700; }
       .muted-copy { fill: #a3a3a3; font-size: 18px; font-weight: 700; }
-      .value { font-size: 24px; font-weight: 700; }
+      .value { fill: #171717; font-size: 24px; font-weight: 700; }
       .visitor { fill: #ffffff; font-size: 24px; font-weight: 700; }
     </style>
     <filter id="shadow" x="-8%" y="-12%" width="116%" height="130%">
@@ -152,13 +151,13 @@ function renderTicketSvg({
     <line x1="797" y1="54" x2="797" y2="576" stroke="#d4d4d4" stroke-width="2" stroke-dasharray="12 12"/>
   </g>
 
-  <text x="108" y="131" font-size="26" font-weight="700" letter-spacing="1">SITC CAMPUS</text>
-  <text x="108" y="237" font-size="62" font-weight="700">Convocation 2026</text>
+  <text x="108" y="131" font-size="26" font-weight="700" letter-spacing="1" fill="#171717">SITC CAMPUS</text>
+  <text x="108" y="237" font-size="62" font-weight="700" fill="#171717">Convocation 2026</text>
   <text x="108" y="286" font-size="30" font-weight="700" fill="#525252">Seating Platform</text>
 
   <rect x="108" y="312" width="620" height="132" rx="22" fill="#ffffff" fill-opacity="0.88" stroke="#e5e5e5"/>
   <text x="130" y="348" class="eyebrow">STAGE ANNOUNCING NAME</text>
-  <text x="130" y="387" font-size="${stageNameSize}" font-weight="700">${nameTspans}</text>
+  <text x="130" y="387" font-size="${stageNameSize}" font-weight="700" fill="#171717">${nameTspans}</text>
 
   ${renderTicketBlock(108, "REFERENCE", referenceId)}
   ${renderTicketBlock(272, "SESSION", sessionNo)}
@@ -220,7 +219,8 @@ function wrapText(value: string, maxGraphemes: number, maxLines: number) {
   const lines: string[] = [];
   let current = "";
 
-  for (const word of words) {
+  for (let index = 0; index < words.length; index += 1) {
+    const word = words[index];
     const next = current ? `${current} ${word}` : word;
 
     if (splitGraphemes(next).length <= maxGraphemes) {
@@ -235,6 +235,7 @@ function wrapText(value: string, maxGraphemes: number, maxLines: number) {
     current = word;
 
     if (lines.length === maxLines - 1) {
+      current = words.slice(index).join(" ");
       break;
     }
   }
