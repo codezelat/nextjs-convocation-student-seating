@@ -3,15 +3,14 @@ import {
   DownloadIcon,
   EyeIcon,
   FileSpreadsheetIcon,
-  LogOutIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
 
-import { deleteSeatAction, logoutAction } from "@/app/hidden-admin/actions";
-import { BrandMark } from "@/components/brand-mark";
+import { deleteSeatAction } from "@/app/hidden-admin/actions";
+import { AdminHeader } from "@/components/admin/admin-header";
 import { ImportPanel } from "@/components/admin/import-panel";
 import { SeatForm } from "@/components/admin/seat-form";
 import { Badge } from "@/components/ui/badge";
@@ -66,18 +65,7 @@ export default async function DashboardPage({
   return (
     <main className="min-h-dvh bg-muted/30 px-4 py-5 text-foreground sm:px-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
-        <header className="flex flex-col gap-4 rounded-2xl bg-background p-4 ring-1 ring-border sm:flex-row sm:items-center sm:justify-between">
-          <BrandMark href="/hidden-admin/dashboard" />
-          <div className="flex flex-col gap-2 sm:items-end">
-            <div className="text-sm text-muted-foreground">{session.email}</div>
-            <form action={logoutAction}>
-              <Button type="submit" variant="outline">
-                <LogOutIcon data-icon="inline-start" />
-                Logout
-              </Button>
-            </form>
-          </div>
-        </header>
+        <AdminHeader email={session.email} active="seating" />
 
         {params.success || params.error ? (
           <div className="rounded-xl bg-background p-3 text-sm ring-1 ring-border">

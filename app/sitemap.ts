@@ -11,5 +11,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
       images: [absoluteUrl("/images/sitc-convocation-hero.png")],
     },
+    {
+      url: absoluteUrl("/certificate-request"),
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
   ];
 }

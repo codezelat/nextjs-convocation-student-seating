@@ -32,3 +32,28 @@ model StudentSeat {
   @@index([seatNo])
   @@index([ticketCategory])
 }
+
+model CertificateRequest {
+  id                    String   @id @default(cuid()) @db.VarChar(191)
+  studentId             String   @unique @db.VarChar(64)
+  fullName              String   @db.VarChar(191)
+  whatsappNumber        String   @db.VarChar(32)
+  deliveryAddress       String   @db.Text
+  district              String   @db.VarChar(32)
+  deliveryContactNumber String   @db.VarChar(32)
+  receiptObjectKey      String   @unique @db.VarChar(255)
+  receiptFileName       String   @db.VarChar(255)
+  receiptContentType    String   @db.VarChar(64)
+  receiptSizeBytes      Int
+  status                String   @default("PENDING") @db.VarChar(32)
+  internalNote          String?  @db.Text
+  courierReference      String?  @db.VarChar(191)
+  sourceHash            String?  @db.VarChar(64)
+  confirmedAt           DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([district])
+  @@index([sourceHash, createdAt])
+}

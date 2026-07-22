@@ -27,10 +27,10 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center px-5 py-5 text-center sm:px-8 lg:py-6">
+      <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center px-5 py-5 text-center sm:px-8 lg:py-6 [@media(max-height:720px)]:py-3">
         <BrandMark />
 
-        <div className="mt-5 w-full max-w-xl overflow-hidden rounded-2xl bg-muted shadow-2xl shadow-foreground/10 ring-1 ring-border">
+        <div className="mt-5 w-full max-w-xl overflow-hidden rounded-2xl bg-muted shadow-2xl shadow-foreground/10 ring-1 ring-border [@media(max-height:720px)]:mt-3 [@media(max-height:720px)]:max-w-lg">
           <Image
             src="/images/sitc-convocation-hero.png"
             alt="SITC Campus convocation award presentation"
@@ -41,7 +41,7 @@ export default function Home() {
           />
         </div>
 
-        <div className="mt-5 flex max-w-2xl flex-col items-center gap-3">
+        <div className="mt-5 flex max-w-2xl flex-col items-center gap-3 [@media(max-height:720px)]:mt-3 [@media(max-height:720px)]:gap-2">
           <h1 className="text-balance font-heading text-3xl font-semibold tracking-normal sm:text-4xl">
             SITC Convocation 2026
           </h1>

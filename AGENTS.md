@@ -21,6 +21,7 @@ A Next.js platform for SITC Campus convocation graduates to look up their seatin
 | Auth | `jose` (HS256 JWTs) + `bcryptjs` |
 | Excel | `exceljs` (read + generate `.xlsx`) |
 | Images | `sharp` (SVG→PNG social cards with Sinhala font shaping) |
+| Receipt storage | Private Backblaze B2 through the S3-compatible API |
 | Validation | `zod` |
 | Testing | Vitest |
 | Package Manager | npm |
@@ -42,7 +43,9 @@ app/                          # Next.js App Router
 |
 ├── api/
 │   ├── public/search/route.ts        # POST — lookup seat by referenceId
+│   ├── public/certificate-requests/route.ts # POST — certificate request intake
 │   ├── admin/import/route.ts         # POST — validate + commit Excel upload
+│   ├── admin/certificate-requests/   # Authenticated certificate CRUD + receipts
 │   └── sample-format/route.ts        # GET — download .xlsx template
 |
 ├── result/[referenceId]/
@@ -50,29 +53,38 @@ app/                          # Next.js App Router
 │   ├── opengraph-image.tsx           # Dynamic ticket-style OG PNG via sharp
 │   └── twitter-image.tsx             # Re-exports OG image
 |
+├── certificate-request/page.tsx      # Public certificate pack request form
+|
 └── hidden-admin/
     ├── layout.tsx                    # noindex admin layout
     ├── page.tsx                      # Login page
     ├── actions.ts                    # Server Actions (login, logout, saveSeat, deleteSeat)
-    └── dashboard/page.tsx            # Admin dashboard: stats, table, CRUD, import
+    ├── dashboard/page.tsx            # Seating dashboard: stats, table, CRUD, import
+    └── certificate/page.tsx          # Certificate request management
 
 components/
 ├── brand-mark.tsx                    # Reusable SITC logo + campus name
 ├── public/
 │   ├── lookup-dialog.tsx             # Reference ID search modal (client component)
+│   ├── certificate-request-form.tsx  # Shared public/admin certificate form
 │   └── site-footer.tsx               # Footer
 ├── admin/
+│   ├── admin-header.tsx              # Shared admin navigation and logout
+│   ├── certificate-*.tsx             # Certificate filters, dialogs, actions, status
 │   ├── login-form.tsx                # Login form (useActionState)
 │   ├── import-panel.tsx              # Excel upload + validate/import UI
 │   └── seat-form.tsx                 # Manual student CRUD form
-└── ui/                               # 16 shadcn-style primitives
+└── ui/                               # shadcn-style primitives
 
 lib/
 ├── db.ts                             # Singleton PrismaClient (server-only)
 ├── site.ts                           # Site config: name, description, getSiteUrl()
 ├── utils.ts                          # cn() utility
 ├── data/seats.ts                     # All DB operations
+├── data/certificate-requests.ts      # Certificate queries and mutations
 ├── auth/session.ts                   # JWT create/verify, cookie management
+├── certificates/                     # Validation, receipt checks, service
+├── storage/backblaze.ts              # Private B2 storage and signed downloads
 └── import/
     ├── excel.ts                      # Workbook parser
     └── seat-workbook.ts              # Header mapping engine + row validation
@@ -89,7 +101,8 @@ scripts/
 └── import-workbook.ts                # CLI: `tsx scripts/import-workbook.ts <file.xlsx>`
 
 tests/
-└── import-students.test.ts           # 7 Vitest tests for import validation
+├── import-students.test.ts           # 7 Vitest tests for import validation
+└── certificate-requests.test.ts      # 8 request and receipt validation tests
 ```
 
 ---
@@ -100,10 +113,14 @@ tests/
 |---|---|---|---|
 | `/` | SSR Page | No | ✅ Indexed |
 | `/result/[referenceId]` | SSR Page | No | `noindex` (OG reachable) |
+| `/certificate-request` | Static Page | No | Indexed |
 | `/hidden-admin` | SSR Page | No (form) | `noindex` |
 | `/hidden-admin/dashboard` | SSR Page | ✅ JWT | `noindex` |
+| `/hidden-admin/certificate` | SSR Page | ✅ JWT | `noindex` |
 | `/api/public/search` | POST | No | Blocked |
+| `/api/public/certificate-requests` | POST | No | Blocked |
 | `/api/admin/import` | POST | ✅ JWT | Blocked |
+| `/api/admin/certificate-requests/**` | REST | ✅ JWT | Blocked |
 | `/api/sample-format` | GET | No | Blocked |
 
 ---
@@ -126,6 +143,14 @@ tests/
 - SameSite=Lax, Secure in production
 - `requireAdmin()` → `getAdminSession()` → `jwtVerify()` flow on protected routes/actions
 - bcrypt (12 rounds) for password storage
+
+### Certificate Request Flow
+1. The public or admin form submits multipart data to its certificate endpoint
+2. Zod validates fields and normalizes Sri Lankan phone numbers
+3. Receipt validation checks the size and JPG/PNG/PDF binary signature
+4. The receipt uploads to the private B2 bucket with SSE-B2 (`AES256`)
+5. Prisma creates the request; a failed write triggers receipt cleanup
+6. Admin receipt access creates a 60-second signed URL after JWT verification
 
 ### Excel Import Pipeline
 1. Upload `.xlsx` → `parseSeatWorkbook()` via ExcelJS
@@ -159,6 +184,15 @@ tests/
 - `balconyVisitorSeatNos` (String — JSON array of seat strings)
 - `createdAt` / `updatedAt` (DateTime)
 
+### CertificateRequest
+- `id` (String, cuid, PK)
+- `studentId` (String, unique)
+- Certificate name, normalized phone numbers, delivery address, and district
+- Private receipt object key, original filename, content type, and size
+- `status`, optional `internalNote`, optional `courierReference`
+- HMAC source hash for public submission rate limiting
+- `confirmedAt`, `createdAt`, `updatedAt`
+
 ---
 
 ## Environment Variables
@@ -170,6 +204,11 @@ tests/
 | `ADMIN_PASSWORD` | ✅ | Admin password (bcrypt, seed only) |
 | `SESSION_SECRET` | ✅ | JWT signing key (≥32 chars) |
 | `NEXT_PUBLIC_SITE_URL` | ✅ | Canonical domain for OG/sitemap/robots |
+| `B2_S3_ENDPOINT` | ✅ | Backblaze B2 S3-compatible endpoint |
+| `B2_REGION` | ✅ | B2 bucket region |
+| `B2_BUCKET_NAME` | ✅ | Private receipt bucket |
+| `B2_KEY_ID` | ✅ | Bucket-scoped application key ID |
+| `B2_APPLICATION_KEY` | ✅ | Bucket-scoped application key secret |
 
 ---
 
@@ -186,6 +225,9 @@ tests/
 | API routes | robots.txt + X-Robots-Tag |
 | Headers | X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Permissions-Policy, Referrer-Policy |
 | Validation | Zod + manual row validation + server-only DB module |
+| File validation | 5 MB cap + binary signature verification |
+| Receipt privacy | Private B2 bucket + SSE-B2 + 60-second signed URLs |
+| Public abuse control | Honeypot + source-HMAC rate limit |
 
 ---
 
@@ -213,15 +255,16 @@ npm run import:seats     # CLI: tsx scripts/import-workbook.ts <file.xlsx>
 1. Set `NEXT_PUBLIC_SITE_URL` to HTTPS domain
 2. Set strong `SESSION_SECRET` (≥32 chars)
 3. Set `ADMIN_EMAIL` + `ADMIN_PASSWORD`
-4. `npm run db:setup` (SQLite) or `npm run db:generate:mysql && npm run db:push:mysql` (MySQL)
-5. `npm run build` → `npm run start`
-6. Seed admin, then remove `ADMIN_PASSWORD` from production secrets
+4. Set the bucket-scoped B2 variables for the private receipt bucket
+5. `npm run db:setup` (SQLite) or `npm run db:generate:mysql && npm run db:push:mysql` (MySQL)
+6. `npm run build` → `npm run start`
+7. Seed admin, then remove `ADMIN_PASSWORD` from production secrets
 
 ---
 
 ## Testing
 
-Currently 7 Vitest tests covering:
+Currently 15 Vitest tests covering:
 - Header normalization (trim/case/blank)
 - Alternate column heading aliases
 - Typo tolerance across all required headings
@@ -229,6 +272,9 @@ Currently 7 Vitest tests covering:
 - Missing required columns detection
 - Seat No required field error message
 - Ticket category → visitor count validation
+- Certificate request validation and Sri Lankan phone normalization
+- Unicode certificate names and district validation
+- Receipt binary signatures, spoofed types, unsupported files, and size limits
 
 ---
 

@@ -15,6 +15,13 @@ const migrationPath = path.join(
   "000001_init",
   "migration.sql"
 );
+const certificateMigrationPath = path.join(
+  process.cwd(),
+  "prisma",
+  "migrations",
+  "000002_certificate_requests",
+  "migration.sql"
+);
 
 fs.mkdirSync(path.dirname(resolvedDbPath), { recursive: true });
 
@@ -28,6 +35,14 @@ const hasAdminTable = db
 
 if (!hasAdminTable) {
   db.exec(sql);
+}
+
+const hasCertificateRequestTable = db
+  .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+  .get("CertificateRequest");
+
+if (!hasCertificateRequestTable) {
+  db.exec(fs.readFileSync(certificateMigrationPath, "utf8"));
 }
 db.close();
 
