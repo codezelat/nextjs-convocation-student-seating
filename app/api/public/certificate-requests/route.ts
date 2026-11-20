@@ -1,6 +1,5 @@
-import { createHmac } from "node:crypto";
-
 import { countRecentCertificateRequestsBySource } from "@/lib/data/certificate-requests";
+import { getClientSourceHash } from "@/lib/http/rate-limit";
 import {
   CertificateSubmissionError,
   submitCertificateRequest,
@@ -32,7 +31,7 @@ export async function POST(request: Request) {
     return Response.json({ ok: true }, { status: 201 });
   }
 
-  const sourceHash = getSourceHash(request);
+  const sourceHash = getClientSourceHash(request);
   if (sourceHash) {
     const recentCount = await countRecentCertificateRequestsBySource(
       sourceHash,
@@ -64,17 +63,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
-
-function getSourceHash(request: Request) {
-  const identifier =
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    request.headers.get("x-real-ip")?.trim();
-  const secret = process.env.SESSION_SECRET;
-
-  if (!identifier || !secret) {
-    return undefined;
-  }
-
-  return createHmac("sha256", secret).update(identifier).digest("hex");
 }

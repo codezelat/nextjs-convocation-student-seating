@@ -44,7 +44,12 @@ export function LookupDialog() {
     setPending(false);
 
     if (!response.ok) {
-      setError("Reference ID not found. Please check and try again.");
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      setError(
+        data?.error ?? "Reference ID not found. Please check and try again."
+      );
       return;
     }
 
