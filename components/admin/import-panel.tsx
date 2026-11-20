@@ -103,6 +103,11 @@ export function ImportPanel({ chrome = "card" }: { chrome?: "card" | "plain" }) 
                 </SelectGroup>
               </SelectContent>
             </Select>
+            <FieldDescription>
+              Update or add rows keeps outdated records untouched and updates
+              the active record per reference ID. Replace all rows deletes
+              every record (including outdated) before importing.
+            </FieldDescription>
           </Field>
         </FieldGroup>
         <div className="flex flex-col gap-2 sm:flex-row">

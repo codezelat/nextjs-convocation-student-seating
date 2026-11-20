@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import fs from "node:fs/promises";
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { parseSeatWorkbook } from "../lib/import/excel";
 
 const filePath = process.argv[2];
@@ -29,19 +29,15 @@ async function main() {
       await tx.studentSeat.deleteMany();
 
       for (const row of result.rows) {
-        await tx.studentSeat.create({ data: toPrismaInput(row) });
+        await upsertActiveSeat(tx, toPrismaInput(row));
       }
     });
   } else {
-    await db.$transaction(
-      result.rows.map((row) =>
-        db.studentSeat.upsert({
-          where: { referenceId: row.referenceId.trim().toUpperCase() },
-          create: toPrismaInput(row),
-          update: toPrismaInput(row),
-        })
-      )
-    );
+    await db.$transaction(async (tx) => {
+      for (const row of result.rows) {
+        await upsertActiveSeat(tx, toPrismaInput(row));
+      }
+    });
   }
 
   console.log(
@@ -66,4 +62,25 @@ function toPrismaInput(row: Awaited<ReturnType<typeof parseSeatWorkbook>>["rows"
     ticketCategory: row.ticketCategory,
     balconyVisitorSeatNos: JSON.stringify(row.balconyVisitorSeatNos),
   };
+}
+
+async function upsertActiveSeat(
+  tx: Prisma.TransactionClient,
+  data: ReturnType<typeof toPrismaInput>
+) {
+  const active = await tx.studentSeat.findFirst({
+    where: { referenceId: data.referenceId, status: "ACTIVE" },
+    select: { id: true },
+  });
+
+  if (active) {
+    return tx.studentSeat.update({
+      where: { id: active.id },
+      data: { ...data, activeReferenceKey: data.referenceId },
+    });
+  }
+
+  return tx.studentSeat.create({
+    data: { ...data, activeReferenceKey: data.referenceId },
+  });
 }

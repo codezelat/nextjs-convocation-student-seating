@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
 import { parseSeatWorkbook } from "@/lib/import/excel";
-import { replaceSeats, upsertSeats } from "@/lib/data/seats";
+import { SeatConflictError, replaceSeats, upsertSeats } from "@/lib/data/seats";
 import { verifyAdminToken } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
@@ -41,10 +41,17 @@ export async function POST(request: Request) {
   }
 
   if (commit) {
-    if (mode === "replace") {
-      await replaceSeats(result.rows);
-    } else {
-      await upsertSeats(result.rows);
+    try {
+      if (mode === "replace") {
+        await replaceSeats(result.rows);
+      } else {
+        await upsertSeats(result.rows);
+      }
+    } catch (error) {
+      if (error instanceof SeatConflictError) {
+        return Response.json({ ok: false, error: error.message }, { status: 409 });
+      }
+      throw error;
     }
 
     revalidatePath("/hidden-admin/dashboard");

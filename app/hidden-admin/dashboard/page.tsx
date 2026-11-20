@@ -1,19 +1,18 @@
 import Link from "next/link";
 import {
   DownloadIcon,
-  EyeIcon,
   FileSpreadsheetIcon,
-  PencilIcon,
   PlusIcon,
   SearchIcon,
-  Trash2Icon,
 } from "lucide-react";
 
-import { deleteSeatAction } from "@/app/hidden-admin/actions";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { ImportPanel } from "@/components/admin/import-panel";
 import { SeatForm } from "@/components/admin/seat-form";
-import { Badge } from "@/components/ui/badge";
+import {
+  SeatsTable,
+} from "@/components/admin/seats-table";
+import { seatDashboardHref } from "@/lib/admin/seat-urls";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -25,20 +24,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  findSeatById,
-  getSeatStats,
-  listSeats,
-} from "@/lib/data/seats";
-import type { AdminSeatRow } from "@/lib/data/seats";
+import { findSeatById, getSeatStats, listSeats } from "@/lib/data/seats";
+import { normalizeSeatStatus } from "@/lib/data/seat-filters";
 import { requireAdmin } from "@/lib/auth/session";
 
 export default async function DashboardPage({
@@ -46,6 +33,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{
     q?: string;
+    status?: string;
     page?: string;
     edit?: string;
     success?: string;
@@ -55,10 +43,11 @@ export default async function DashboardPage({
   const session = await requireAdmin();
   const params = await searchParams;
   const query = params.q ?? "";
+  const statusFilter = normalizeSeatStatus(params.status);
   const page = Number(params.page ?? 1);
   const [stats, listing, editSeat] = await Promise.all([
     getSeatStats(),
-    listSeats({ query, page, pageSize: 20 }),
+    listSeats({ query, status: statusFilter, page, pageSize: 20 }),
     params.edit ? findSeatById(params.edit) : null,
   ]);
 
@@ -75,8 +64,10 @@ export default async function DashboardPage({
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
           <Stat label="Total records" value={stats.total} />
+          <Stat label="Active" value={stats.active} />
+          <Stat label="Outdated" value={stats.outdated} />
           <Stat label="Ticket A" value={stats.tickets.A ?? 0} />
           <Stat label="Ticket B" value={stats.tickets.B ?? 0} />
           <Stat label="Ticket C" value={stats.tickets.C ?? 0} />
@@ -88,7 +79,7 @@ export default async function DashboardPage({
               <div>
                 <CardTitle>Student seating records</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Compact list view. Open a record for the full seat details.
+                  Outdated records no longer respond to public seat lookups.
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -146,90 +137,39 @@ export default async function DashboardPage({
                 defaultValue={query}
                 placeholder="Search reference, student, name, seat"
               />
+              <select
+                name="status"
+                defaultValue={statusFilter}
+                aria-label="Filter by status"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-40"
+              >
+                <option value="ALL">All statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="OUTDATED">Outdated</option>
+              </select>
               <Button type="submit" variant="outline" className="sm:w-28">
                 <SearchIcon data-icon="inline-start" />
                 Search
               </Button>
             </form>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto rounded-xl border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Graduate</TableHead>
-                    <TableHead className="w-[120px]">Session</TableHead>
-                    <TableHead className="w-[120px]">Seat</TableHead>
-                    <TableHead className="w-[110px]">Ticket</TableHead>
-                    <TableHead>Visitors</TableHead>
-                    <TableHead className="w-[150px] text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {listing.seats.map((seat) => (
-                    <TableRow key={seat.id}>
-                      <TableCell>
-                        <div className="flex min-w-[260px] flex-col gap-1">
-                          <span className="font-medium leading-5">
-                            {seat.stageAnnouncingName}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {seat.referenceId} · {seat.studentId}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{seat.sessionNo}</TableCell>
-                      <TableCell className="font-medium">{seat.seatNo}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {seat.ticketCategory} · {visitorLabel(seat)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <VisitorSeats seats={seat.balconyVisitorSeatNos} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <SeatDetailsDialog seat={seat} />
-                          <Button
-                            nativeButton={false}
-                            variant="ghost"
-                            size="icon-sm"
-                            render={
-                              <Link
-                                href={dashboardHref({ query, edit: seat.id })}
-                                aria-label={`Edit ${seat.referenceId}`}
-                              />
-                            }
-                          >
-                            <PencilIcon />
-                          </Button>
-                          <form action={deleteSeatAction}>
-                            <input type="hidden" name="id" value={seat.id} />
-                            <Button
-                              type="submit"
-                              variant="destructive"
-                              size="icon-sm"
-                              aria-label={`Delete ${seat.referenceId}`}
-                            >
-                              <Trash2Icon />
-                            </Button>
-                          </form>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <CardContent className="flex flex-col gap-4">
+            <SeatsTable
+              key={`${query}|${statusFilter}|${listing.page}`}
+              seats={listing.seats}
+              query={query}
+              status={statusFilter}
+              totalMatching={listing.total}
+            />
 
             <nav
               aria-label="pagination"
-              className="mt-4 flex items-center justify-center gap-2"
+              className="mt-2 flex items-center justify-center gap-2"
             >
               <Link
-                href={dashboardHref({
+                href={seatDashboardHref({
                   query,
+                  status: statusFilter,
                   page: Math.max(1, listing.page - 1),
                 })}
                 className={buttonVariants({ variant: "outline" })}
@@ -241,8 +181,9 @@ export default async function DashboardPage({
                 Page {listing.page} of {listing.totalPages}
               </span>
               <Link
-                href={dashboardHref({
+                href={seatDashboardHref({
                   query,
+                  status: statusFilter,
                   page: Math.min(listing.totalPages, listing.page + 1),
                 })}
                 className={buttonVariants({ variant: "outline" })}
@@ -281,128 +222,4 @@ function Stat({ label, value }: { label: string; value: number }) {
       </CardContent>
     </Card>
   );
-}
-
-function SeatDetailsDialog({ seat }: { seat: AdminSeatRow }) {
-  return (
-    <Dialog>
-      <DialogTrigger
-        render={
-          <Button
-            variant="outline"
-            size="icon-sm"
-            aria-label={`View ${seat.referenceId}`}
-          />
-        }
-      >
-        <EyeIcon />
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{seat.stageAnnouncingName}</DialogTitle>
-          <DialogDescription>
-            Full seating record for reference {seat.referenceId}.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Detail label="Session No" value={seat.sessionNo} />
-          <Detail label="Student ID" value={seat.studentId} />
-          <Detail label="Seat No" value={seat.seatNo} />
-          <Detail label="Ticket" value={`Category ${seat.ticketCategory}`} />
-          <div className="rounded-xl bg-muted/60 p-3 sm:col-span-2">
-            <div className="text-xs font-medium uppercase text-muted-foreground">
-              Balcony Visitors Seat No
-            </div>
-            <div className="mt-2">
-              <VisitorSeats seats={seat.balconyVisitorSeatNos} prominent />
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-muted/60 p-3">
-      <div className="text-xs font-medium uppercase text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-1 break-words font-medium">{value}</div>
-    </div>
-  );
-}
-
-function VisitorSeats({
-  seats,
-  prominent = false,
-}: {
-  seats: string[];
-  prominent?: boolean;
-}) {
-  if (!seats.length) {
-    return <span className="text-sm text-muted-foreground">Graduate only</span>;
-  }
-
-  return (
-    <div className="flex min-w-[160px] flex-wrap gap-1.5">
-      {seats.map((seat) => (
-        <Badge
-          key={seat}
-          variant="outline"
-          className={
-            prominent
-              ? "rounded-xl border-primary/30 bg-background px-3 py-1.5 text-sm font-semibold"
-              : "rounded-lg bg-background"
-          }
-        >
-          {formatBalconySeat(seat)}
-        </Badge>
-      ))}
-    </div>
-  );
-}
-
-function visitorLabel(seat: AdminSeatRow) {
-  if (seat.ticketCategory === "A") {
-    return "Graduate";
-  }
-
-  return `${seat.balconyVisitorSeatNos.length} visitor${
-    seat.balconyVisitorSeatNos.length === 1 ? "" : "s"
-  }`;
-}
-
-function formatBalconySeat(value: string) {
-  return value.trim().toLowerCase().startsWith("balcony")
-    ? value
-    : `Balcony ${value}`;
-}
-
-function dashboardHref({
-  query,
-  page,
-  edit,
-}: {
-  query?: string;
-  page?: number;
-  edit?: string;
-}) {
-  const params = new URLSearchParams();
-
-  if (query) {
-    params.set("q", query);
-  }
-
-  if (page && page > 1) {
-    params.set("page", String(page));
-  }
-
-  if (edit) {
-    params.set("edit", edit);
-  }
-
-  const suffix = params.toString();
-  return `/hidden-admin/dashboard${suffix ? `?${suffix}` : ""}`;
 }

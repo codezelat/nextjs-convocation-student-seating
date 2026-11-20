@@ -22,6 +22,7 @@ export function SeatForm({
 }) {
   const content = (
     <form action={saveSeatAction} className="flex flex-col gap-4">
+      <input type="hidden" name="id" value={seat?.id ?? ""} />
       <FieldGroup className="grid gap-4 md:grid-cols-2">
         <Field>
           <FieldLabel htmlFor="sessionNo">Session No</FieldLabel>
@@ -98,7 +99,9 @@ export function SeatForm({
       <CardHeader>
         <CardTitle>{seat ? "Edit record" : "Manual record"}</CardTitle>
         <CardDescription>
-          Add or update a graduate seating record by reference ID.
+          Add or update a graduate seating record by reference ID. Editing an
+          outdated record keeps it outdated — restore it from the seating
+          table.
         </CardDescription>
       </CardHeader>
       <CardContent>{content}</CardContent>

@@ -17,16 +17,20 @@ model AdminUser {
 
 model StudentSeat {
   id                    String   @id @default(cuid())
-  referenceId           String   @unique
+  referenceId           String
   sessionNo             String
   studentId             String
   seatNo                String
   stageAnnouncingName   String
   ticketCategory        String
   balconyVisitorSeatNos String
+  status                String   @default("ACTIVE")
+  activeReferenceKey    String?  @unique
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  @@index([referenceId])
+  @@index([status])
   @@index([sessionNo])
   @@index([studentId])
   @@index([seatNo])

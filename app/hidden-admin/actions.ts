@@ -10,7 +10,14 @@ import {
   createAdminSession,
   requireAdmin,
 } from "@/lib/auth/session";
-import { deleteSeat, upsertSeat } from "@/lib/data/seats";
+import {
+  SeatConflictError,
+  deleteSeat,
+  saveSeat,
+  setSeatsStatus,
+  setSeatsStatusByFilter,
+} from "@/lib/data/seats";
+import { normalizeSeatStatus } from "@/lib/data/seat-filters";
 import { parseSeatRows } from "@/lib/import/seat-workbook";
 
 export type LoginState = {
@@ -81,9 +88,69 @@ export async function saveSeatAction(formData: FormData) {
     );
   }
 
-  await upsertSeat(result.rows[0]);
+  const id = String(formData.get("id") ?? "").trim() || undefined;
+
+  try {
+    await saveSeat(result.rows[0], id);
+  } catch (error) {
+    if (error instanceof SeatConflictError) {
+      redirect(`/hidden-admin/dashboard?error=${encodeURIComponent(error.message)}`);
+    }
+    throw error;
+  }
+
   revalidatePath("/hidden-admin/dashboard");
   redirect("/hidden-admin/dashboard?success=Student record saved");
+}
+
+export async function setSeatsStatusAction(formData: FormData) {
+  await requireAdmin();
+
+  const status = formData.get("status") === "OUTDATED" ? "OUTDATED" : "ACTIVE";
+  const allMatching = formData.get("scope") === "all-matching";
+  const query = String(formData.get("q") ?? "");
+  const statusFilter = normalizeSeatStatus(String(formData.get("statusFilter") ?? "ALL"));
+  const ids = formData
+    .getAll("ids")
+    .map((value) => String(value))
+    .filter(Boolean);
+
+  if (!allMatching && ids.length === 0) {
+    redirect(
+      `/hidden-admin/dashboard?error=${encodeURIComponent(
+        "Select at least one record first."
+      )}`
+    );
+  }
+
+  let result;
+  try {
+    result = allMatching
+      ? await setSeatsStatusByFilter({ query, status: statusFilter }, status)
+      : await setSeatsStatus(ids, status);
+  } catch (error) {
+    if (error instanceof SeatConflictError) {
+      redirect(`/hidden-admin/dashboard?error=${encodeURIComponent(error.message)}`);
+    }
+    throw error;
+  }
+
+  revalidatePath("/hidden-admin/dashboard");
+
+  const verb = status === "OUTDATED" ? "marked as outdated" : "restored to active";
+  let message = `${result.updated} record${result.updated === 1 ? "" : "s"} ${verb}.`;
+
+  if (result.conflicts.length > 0) {
+    const shown = result.conflicts.slice(0, 10).join(", ");
+    message += ` Skipped (reference already active elsewhere): ${shown}${
+      result.conflicts.length > 10 ? "…" : ""
+    }.`;
+  }
+
+  const params = new URLSearchParams({ success: message });
+  if (query.trim()) params.set("q", query.trim());
+  if (statusFilter !== "ALL") params.set("status", statusFilter);
+  redirect(`/hidden-admin/dashboard?${params.toString()}`);
 }
 
 export async function deleteSeatAction(formData: FormData) {

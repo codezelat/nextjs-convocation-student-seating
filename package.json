@@ -15,7 +15,8 @@
     "db:setup": "tsx -r tsconfig-paths/register scripts/setup-db.ts && prisma generate && tsx prisma/seed.ts",
     "db:seed": "tsx prisma/seed.ts",
     "build:mysql": "prisma generate --schema prisma/schema.mysql.prisma && next build",
-    "import:seats": "tsx -r tsconfig-paths/register scripts/import-workbook.ts"
+    "import:seats": "tsx -r tsconfig-paths/register scripts/import-workbook.ts",
+    "db:backfill": "tsx -r tsconfig-paths/register scripts/backfill-seat-status.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1093.0",

@@ -22,6 +22,13 @@ const certificateMigrationPath = path.join(
   "000002_certificate_requests",
   "migration.sql"
 );
+const seatStatusMigrationPath = path.join(
+  process.cwd(),
+  "prisma",
+  "migrations",
+  "000003_seat_status",
+  "migration.sql"
+);
 
 fs.mkdirSync(path.dirname(resolvedDbPath), { recursive: true });
 
@@ -44,6 +51,15 @@ const hasCertificateRequestTable = db
 if (!hasCertificateRequestTable) {
   db.exec(fs.readFileSync(certificateMigrationPath, "utf8"));
 }
+
+const hasSeatStatusColumn = db
+  .prepare("SELECT name FROM pragma_table_info('StudentSeat') WHERE name = ?")
+  .get("status");
+
+if (!hasSeatStatusColumn) {
+  db.exec(fs.readFileSync(seatStatusMigrationPath, "utf8"));
+}
+
 db.close();
 
 console.log(`SQLite database ready at ${resolvedDbPath}`);
