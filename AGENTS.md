@@ -73,17 +73,21 @@ components/
 │   ├── certificate-*.tsx             # Certificate filters, dialogs, actions, status
 │   ├── login-form.tsx                # Login form (useActionState)
 │   ├── import-panel.tsx              # Excel upload + validate/import UI
-│   └── seat-form.tsx                 # Manual student CRUD form
+│   ├── seat-form.tsx                 # Manual student CRUD form
+│   └── seats-table.tsx               # Seating table with bulk selection + status actions
 └── ui/                               # shadcn-style primitives
 
 lib/
 ├── db.ts                             # Singleton PrismaClient (server-only)
 ├── site.ts                           # Site config: name, description, getSiteUrl()
 ├── utils.ts                          # cn() utility
+├── admin/seat-urls.ts                # Dashboard URL builder shared by server + client
 ├── data/seats.ts                     # All DB operations
+├── data/seat-filters.ts              # Pure status normalization + shared WHERE builder
 ├── data/certificate-requests.ts      # Certificate queries and mutations
 ├── auth/session.ts                   # JWT create/verify, cookie management
 ├── certificates/                     # Validation, receipt checks, service
+├── http/rate-limit.ts                # Sliding-window limiter + HMAC client source hash
 ├── storage/backblaze.ts              # Private B2 storage and signed downloads
 └── import/
     ├── excel.ts                      # Workbook parser
@@ -129,8 +133,16 @@ tests/
 
 ### Public Seat Lookup Flow
 1. User enters Reference ID in `LookupDialog` (client component)
-2. POST to `/api/public/search` → `findSeatByReference()` → Prisma `findUnique`
+2. POST to `/api/public/search` (rate limited: 30 requests/minute per IP) → `findSeatByReference()` (ACTIVE records only) → Prisma `findFirst`
 3. On success: `router.push(/result/{referenceId})` → SSR page renders full card
+
+### Seat Status: Active vs Outdated
+- Every `StudentSeat` carries `status` (`ACTIVE` | `OUTDATED`) plus `activeReferenceKey` (referenceId when active, `NULL` when outdated)
+- The `activeReferenceKey` unique index enforces **at most one ACTIVE record per referenceId at the database level** in both SQLite and MySQL (NULLs are exempt, so any number of outdated rows may share a referenceId)
+- Public lookups (`/api/public/search`, result page, OG image) only ever see ACTIVE records
+- Bulk selection on the dashboard supports "select all on this page" and Gmail-style "select all N matching records", then mark as outdated or restore to active via `setSeatsStatusAction`
+- Archiving always succeeds; restoring a record is skipped and reported as a conflict when a newer ACTIVE record already holds the same referenceId (oldest row wins when duplicates are restored together)
+- Excel upsert updates the ACTIVE row per referenceId and leaves outdated rows untouched; manual edit (by id) keeps an outdated record outdated; replace mode deletes everything (including outdated) first
 
 ### Social Card Generation
 - Custom `sharp` pipeline (not Next.js `ImageResponse`)
@@ -177,11 +189,13 @@ tests/
 
 ### StudentSeat
 - `id` (String, cuid, PK)
-- `referenceId` (String, **unique**) — public lookup key
+- `referenceId` (String, indexed) — public lookup key; NOT globally unique so archived (outdated) rows may repeat it
 - `sessionNo`, `studentId`, `seatNo` (String, indexed)
 - `stageAnnouncingName` (String) — Sinhala name
 - `ticketCategory` (String: A/B/C, indexed)
 - `balconyVisitorSeatNos` (String — JSON array of seat strings)
+- `status` (String: ACTIVE/OUTDATED, default ACTIVE, indexed)
+- `activeReferenceKey` (String?, unique) — referenceId when ACTIVE, NULL when OUTDATED
 - `createdAt` / `updatedAt` (DateTime)
 
 ### CertificateRequest
@@ -227,7 +241,7 @@ tests/
 | Validation | Zod + manual row validation + server-only DB module |
 | File validation | 5 MB cap + binary signature verification |
 | Receipt privacy | Private B2 bucket + SSE-B2 + 60-second signed URLs |
-| Public abuse control | Honeypot + source-HMAC rate limit |
+| Public abuse control | Honeypot + source-HMAC rate limit (search: 30/min sliding window; certificate requests: 3/hour) |
 
 ---
 
@@ -244,6 +258,7 @@ npm run db:seed          # Seed admin only
 npm run db:generate      # Prisma generate (SQLite)
 npm run db:generate:mysql # Prisma generate (MySQL)
 npm run db:push:mysql    # Push MySQL schema
+npm run db:backfill      # Backfill activeReferenceKey after in-place migration
 npm run build:mysql      # MySQL client gen + Next build
 npm run import:seats     # CLI: tsx scripts/import-workbook.ts <file.xlsx>
 ```
@@ -256,7 +271,7 @@ npm run import:seats     # CLI: tsx scripts/import-workbook.ts <file.xlsx>
 2. Set strong `SESSION_SECRET` (≥32 chars)
 3. Set `ADMIN_EMAIL` + `ADMIN_PASSWORD`
 4. Set the bucket-scoped B2 variables for the private receipt bucket
-5. `npm run db:setup` (SQLite) or `npm run db:generate:mysql && npm run db:push:mysql` (MySQL)
+5. `npm run db:setup` (SQLite) or `npm run db:generate:mysql && npm run db:push:mysql && npm run db:backfill` (MySQL — the backfill sets `activeReferenceKey` for pre-existing rows)
 6. `npm run build` → `npm run start`
 7. Seed admin, then remove `ADMIN_PASSWORD` from production secrets
 
@@ -264,7 +279,7 @@ npm run import:seats     # CLI: tsx scripts/import-workbook.ts <file.xlsx>
 
 ## Testing
 
-Currently 15 Vitest tests covering:
+Currently 28 Vitest tests covering:
 - Header normalization (trim/case/blank)
 - Alternate column heading aliases
 - Typo tolerance across all required headings
@@ -272,6 +287,8 @@ Currently 15 Vitest tests covering:
 - Missing required columns detection
 - Seat No required field error message
 - Ticket category → visitor count validation
+- Seat status normalization and the shared status + search WHERE builder
+- Rate limiter sliding window, retry times, and client source hashing
 - Certificate request validation and Sri Lankan phone normalization
 - Unicode certificate names and district validation
 - Receipt binary signatures, spoofed types, unsupported files, and size limits
