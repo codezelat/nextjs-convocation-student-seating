@@ -148,7 +148,7 @@ export default async function ResultPage({
                   <UserIcon aria-hidden="true" />
                   Stage Announcing Name
                 </div>
-                <p className="text-pretty text-2xl font-semibold leading-9">
+                <p dir="auto" className="wrap-anywhere text-2xl font-semibold leading-9">
                   {seat.stageAnnouncingName}
                 </p>
               </div>

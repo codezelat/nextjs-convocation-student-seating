@@ -188,7 +188,7 @@ export function SeatsTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex min-w-[260px] flex-col gap-1">
-                    <span className="font-medium leading-5">
+                    <span dir="auto" className="wrap-anywhere font-medium leading-6">
                       {seat.stageAnnouncingName}
                     </span>
                     <span className="text-xs text-muted-foreground">
@@ -321,7 +321,7 @@ function SeatDetailsDialog({ seat }: { seat: AdminSeatRow }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{seat.stageAnnouncingName}</DialogTitle>
+          <DialogTitle dir="auto" className="wrap-anywhere">{seat.stageAnnouncingName}</DialogTitle>
           <DialogDescription>
             Full seating record for reference {seat.referenceId}.
           </DialogDescription>

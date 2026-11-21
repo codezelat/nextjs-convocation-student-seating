@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import sharp from "sharp";
+import { Canvas } from "skia-canvas";
 
 import { findSeatForResult } from "@/lib/data/seats";
+import { cleanTicketText, drawTicketText } from "@/lib/tickets/text";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,33 +17,32 @@ type ImageProps = {
   params: Promise<{ referenceId: string }>;
 };
 
-type FontData = {
-  regular: string;
-  bold: string;
-};
-
-let fontDataPromise: Promise<FontData> | undefined;
-
 export default async function Image({ params }: ImageProps) {
   const { referenceId } = await params;
   const seat = await findSeatForResult(referenceId);
   const visitorSeats = seat?.balconyVisitorSeatNos.map(formatBalconySeat) ?? [];
-  const stageName = formatStageName(seat?.stageAnnouncingName);
-  const stageNameLines = wrapText(stageName, 18, 2);
-  const stageNameSize = splitGraphemes(stageName).length > 52 ? 30 : 35;
-  const fonts = await getFontData();
+  const stageName = cleanTicketText(seat?.stageAnnouncingName ?? "") || "Seat holder";
   const svg = renderTicketSvg({
-    fonts,
     referenceId: seat?.referenceId ?? referenceId.toUpperCase(),
     sessionNo: seat?.sessionNo ?? "-",
     programId: seat?.programId || "-",
     ticket: seat ? `Category ${seat.ticketCategory}` : "-",
     seatNo: seat?.seatNo ?? "--",
     visitorSeats,
-    stageNameLines,
-    stageNameSize,
   });
-  const png = await sharp(Buffer.from(svg)).png().toBuffer();
+  const name = new Canvas(576, 82, { gpu: false });
+  let png: Buffer;
+  try {
+    drawTicketText(name.getContext("2d"), stageName, {
+      x: 0, y: 0, width: name.width, height: name.height, fontSize: 35, weight: 700, color: "#171717",
+    });
+    png = await sharp(Buffer.from(svg))
+      .composite([{ input: await name.toBuffer("png"), left: 130, top: 354 }])
+      .png()
+      .toBuffer();
+  } finally {
+    name.dispose();
+  }
 
   return new Response(new Uint8Array(png), {
     headers: {
@@ -54,46 +52,22 @@ export default async function Image({ params }: ImageProps) {
   });
 }
 
-async function getFontData() {
-  fontDataPromise ??= Promise.all([
-    readFile(join(process.cwd(), "public/fonts/NotoSansSinhala-Regular.ttf")),
-    readFile(join(process.cwd(), "public/fonts/NotoSansSinhala-Bold.ttf")),
-  ]).then(([regular, bold]) => ({
-    regular: regular.toString("base64"),
-    bold: bold.toString("base64"),
-  }));
-
-  return fontDataPromise;
-}
-
 function renderTicketSvg({
-  fonts,
   referenceId,
   sessionNo,
   programId,
   ticket,
   seatNo,
   visitorSeats,
-  stageNameLines,
-  stageNameSize,
 }: {
-  fonts: FontData;
   referenceId: string;
   sessionNo: string;
   programId: string;
   ticket: string;
   seatNo: string;
   visitorSeats: string[];
-  stageNameLines: string[];
-  stageNameSize: number;
 }) {
   const programIdFontSize = Math.min(24, Math.floor(260 / splitGraphemes(programId).length));
-  const nameTspans = stageNameLines
-    .map(
-      (line, index) =>
-        `<tspan x="130" dy="${index === 0 ? 0 : stageNameSize + 8}">${escapeXml(line)}</tspan>`
-    )
-    .join("");
   const visitorSeatNodes =
     visitorSeats.length > 0
       ? visitorSeats
@@ -115,17 +89,7 @@ function renderTicketSvg({
 <svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}" viewBox="0 0 ${size.width} ${size.height}">
   <defs>
     <style>
-      @font-face {
-        font-family: NotoSinhala;
-        src: url(data:font/truetype;base64,${fonts.regular}) format('truetype');
-        font-weight: 400;
-      }
-      @font-face {
-        font-family: NotoSinhala;
-        src: url(data:font/truetype;base64,${fonts.bold}) format('truetype');
-        font-weight: 700;
-      }
-      text { font-family: 'Noto Sans Sinhala', NotoSinhala, Arial, sans-serif; }
+      text { font-family: Arial, sans-serif; }
       .eyebrow { fill: #737373; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
       .white-small { fill: #a3a3a3; font-size: 17px; font-weight: 700; letter-spacing: 1.5px; }
       .white-number { fill: #ffffff; font-size: 78px; font-weight: 700; }
@@ -161,7 +125,6 @@ function renderTicketSvg({
 
   <rect x="108" y="312" width="620" height="132" rx="22" fill="#ffffff" fill-opacity="0.88" stroke="#e5e5e5"/>
   <text x="130" y="348" class="eyebrow">STAGE ANNOUNCING NAME</text>
-  <text x="130" y="387" font-size="${stageNameSize}" font-weight="700" fill="#171717">${nameTspans}</text>
 
   ${renderTicketBlock(108, "REFERENCE", referenceId)}
   ${renderTicketBlock(272, "SESSION", sessionNo)}
@@ -205,52 +168,6 @@ function formatBalconySeat(value: string) {
   return value.trim().toLowerCase().startsWith("balcony")
     ? value
     : `Balcony ${value}`;
-}
-
-function formatStageName(value?: string) {
-  const fallback = "Seat holder";
-  const trimmed = value?.trim() || fallback;
-  const graphemes = splitGraphemes(trimmed);
-  const maxLength = 68;
-
-  if (graphemes.length <= maxLength) {
-    return trimmed;
-  }
-
-  return `${graphemes.slice(0, maxLength - 1).join("").trim()}...`;
-}
-
-function wrapText(value: string, maxGraphemes: number, maxLines: number) {
-  const words = value.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-
-  for (let index = 0; index < words.length; index += 1) {
-    const word = words[index];
-    const next = current ? `${current} ${word}` : word;
-
-    if (splitGraphemes(next).length <= maxGraphemes) {
-      current = next;
-      continue;
-    }
-
-    if (current) {
-      lines.push(current);
-    }
-
-    current = word;
-
-    if (lines.length === maxLines - 1) {
-      current = words.slice(index).join(" ");
-      break;
-    }
-  }
-
-  if (current && lines.length < maxLines) {
-    lines.push(current);
-  }
-
-  return lines.length > 0 ? lines : [value];
 }
 
 function splitGraphemes(value: string) {

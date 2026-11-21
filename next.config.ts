@@ -3,11 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["skia-canvas"],
   outputFileTracingIncludes: {
-    "/result/\\[referenceId\\]/e-ticket": [
-      "./lib/tickets/assets/**/*",
+    "/result/\\[referenceId\\]/{e-ticket,opengraph-image,twitter-image}": [
+      "./lib/tickets/assets/fonts/**/*",
       "./public/fonts/NotoSansSinhala-*.ttf",
-      "./node_modules/skia-canvas/**/*.node",
+      "./public/fonts/NotoSansTamil-Regular.ttf",
+      "./node_modules/@skia-canvas/**/skia.node",
     ],
+    "/result/\\[referenceId\\]/e-ticket": ["./lib/tickets/assets/template.jpg"],
   },
   env: {
     NEXT_PUBLIC_SPLIT_RECEIPT_UPLOADS: process.env.VERCEL === "1" ? "1" : "0",
