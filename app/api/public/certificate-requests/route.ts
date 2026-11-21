@@ -1,3 +1,4 @@
+import { stageReceiptTail } from "@/lib/certificates/receipt-chunks";
 import { countRecentCertificateRequestsBySource } from "@/lib/data/certificate-requests";
 import { getClientSourceHash } from "@/lib/http/rate-limit";
 import {
@@ -12,6 +13,10 @@ import {
 const maximumRequestBytes = 6 * 1024 * 1024;
 const rateLimitWindowMs = 60 * 60 * 1000;
 const maximumRequestsPerWindow = 3;
+
+export async function PUT(request: Request) {
+  return stageReceiptTail(request, getClientSourceHash(request));
+}
 
 export async function POST(request: Request) {
   let formData: FormData;

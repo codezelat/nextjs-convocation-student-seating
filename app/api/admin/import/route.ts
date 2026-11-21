@@ -5,6 +5,8 @@ import { parseSeatWorkbook } from "@/lib/import/excel";
 import { SeatConflictError, replaceSeats, upsertSeats } from "@/lib/data/seats";
 import { verifyAdminToken } from "@/lib/auth/session";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   const session = await verifyAdminToken(

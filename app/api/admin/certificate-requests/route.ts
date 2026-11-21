@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+import { stageReceiptTail } from "@/lib/certificates/receipt-chunks";
 import { verifyAdminToken } from "@/lib/auth/session";
 import {
   CertificateSubmissionError,
@@ -13,11 +14,19 @@ import {
 
 const maximumRequestBytes = 6 * 1024 * 1024;
 
-export async function POST(request: Request) {
+async function getSession() {
   const cookieStore = await cookies();
-  const session = await verifyAdminToken(
-    cookieStore.get("sitc_admin_session")?.value
-  );
+  return verifyAdminToken(cookieStore.get("sitc_admin_session")?.value);
+}
+
+export async function PUT(request: Request) {
+  const session = await getSession();
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  return stageReceiptTail(request, `admin:${session.sub}`);
+}
+
+export async function POST(request: Request) {
+  const session = await getSession();
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await submitCertificateRequest(formData);
+    await submitCertificateRequest(formData, { receiptSource: `admin:${session.sub}` });
     revalidatePath("/hidden-admin/certificate");
     return Response.json({ ok: true }, { status: 201 });
   } catch (error) {

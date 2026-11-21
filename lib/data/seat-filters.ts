@@ -4,6 +4,13 @@ export type SeatStatus = (typeof SEAT_STATUSES)[number];
 
 export type SeatStatusFilter = SeatStatus | "ALL";
 
+export function containsAdminQuery(query: string) {
+  return {
+    contains: query,
+    ...(process.env.DATABASE_URL_POOLED && { mode: "insensitive" as const }),
+  };
+}
+
 export function normalizeSeatStatus(
   value: string | null | undefined
 ): SeatStatusFilter {
@@ -29,12 +36,13 @@ export function buildSeatWhereInput({
   }
 
   if (trimmedQuery) {
+    const matches = containsAdminQuery(trimmedQuery);
     conditions.push({
       OR: [
-        { referenceId: { contains: trimmedQuery } },
-        { studentId: { contains: trimmedQuery } },
-        { seatNo: { contains: trimmedQuery } },
-        { stageAnnouncingName: { contains: trimmedQuery } },
+        { referenceId: matches },
+        { studentId: matches },
+        { seatNo: matches },
+        { stageAnnouncingName: matches },
       ],
     });
   }

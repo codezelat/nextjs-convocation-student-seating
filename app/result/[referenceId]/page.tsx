@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, TicketIcon, UserIcon, UsersIcon } from "lucide-react";
+import { cache } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { SiteFooter } from "@/components/public/site-footer";
@@ -15,7 +16,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { findSeatByReference } from "@/lib/data/seats";
+import { findSeatForResult } from "@/lib/data/seats";
+
+const findResultSeat = cache(findSeatForResult);
 
 type ResultPageProps = {
   params: Promise<{ referenceId: string }>;
@@ -25,15 +28,16 @@ export async function generateMetadata({
   params,
 }: ResultPageProps): Promise<Metadata> {
   const { referenceId } = await params;
-  const encodedReference = encodeURIComponent(referenceId);
-  const seat = await findSeatByReference(decodeURIComponent(referenceId));
+  const seat = await findResultSeat(referenceId);
+  const canonicalReference = seat?.referenceId ?? referenceId;
+  const encodedReference = encodeURIComponent(canonicalReference);
   const shareName = formatShareName(seat?.stageAnnouncingName);
   const title = shareName
     ? `${shareName} - SITC Convocation 2026 Seating Pass`
     : "SITC Convocation 2026 Seating Pass";
 
   return {
-    title: `Seat Result ${referenceId.toUpperCase()}`,
+    title: `Seat Result ${canonicalReference.toUpperCase()}`,
     description: "Open your SITC Convocation 2026 seating pass.",
     alternates: {
       canonical: `/result/${encodedReference}`,
@@ -75,7 +79,7 @@ export default async function ResultPage({
   params,
 }: ResultPageProps) {
   const { referenceId } = await params;
-  const seat = await findSeatByReference(decodeURIComponent(referenceId));
+  const seat = await findResultSeat(referenceId);
 
   if (!seat) {
     notFound();

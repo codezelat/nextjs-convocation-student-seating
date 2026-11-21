@@ -50,3 +50,4 @@ export const CERTIFICATE_STATUS_LABELS: Record<
 
 export const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 export const MAX_RECEIPT_SIZE_LABEL = "5 MB";
+export const RECEIPT_FIRST_CHUNK_BYTES = 4 * 1024 * 1024;

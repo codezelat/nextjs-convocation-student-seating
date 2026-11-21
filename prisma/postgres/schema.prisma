@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL_POOLED")
+  directUrl = env("DATABASE_URL_DIRECT")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StudentSeat {
+  id                    String   @id @default(cuid())
+  referenceId           String
+  sessionNo             String
+  studentId             String
+  seatNo                String
+  stageAnnouncingName   String
+  ticketCategory        String
+  balconyVisitorSeatNos String
+  status                String   @default("ACTIVE")
+  activeReferenceKey    String?  @unique
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([referenceId])
+  @@index([status])
+  @@index([sessionNo])
+  @@index([studentId])
+  @@index([seatNo])
+  @@index([ticketCategory])
+}
+
+model CertificateRequest {
+  id                    String   @id @default(cuid())
+  studentId             String   @unique
+  fullName              String
+  whatsappNumber        String
+  deliveryAddress       String
+  district              String
+  deliveryContactNumber String
+  receiptObjectKey      String   @unique
+  receiptFileName       String
+  receiptContentType    String
+  receiptSizeBytes      Int
+  status                String   @default("PENDING")
+  internalNote          String?
+  courierReference      String?
+  sourceHash            String?
+  confirmedAt           DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([district])
+  @@index([sourceHash, createdAt])
+}

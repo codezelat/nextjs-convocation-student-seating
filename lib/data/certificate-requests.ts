@@ -7,6 +7,7 @@ import type {
   CertificateRequestFields,
 } from "@/lib/certificates/validation";
 import { db } from "@/lib/db";
+import { containsAdminQuery } from "@/lib/data/seat-filters";
 
 export type CertificateReceiptRecord = {
   receiptObjectKey: string;
@@ -111,16 +112,17 @@ export async function listCertificateRequests({
   const normalizedPageSize = Number.isFinite(pageSize) ? pageSize : 20;
   const safePageSize = Math.min(100, Math.max(5, normalizedPageSize));
   const trimmedQuery = query.trim();
+  const matches = containsAdminQuery(trimmedQuery);
   const where: Prisma.CertificateRequestWhereInput = {
     ...(status !== "ALL" ? { status } : {}),
     ...(trimmedQuery
       ? {
           OR: [
-            { studentId: { contains: trimmedQuery } },
-            { fullName: { contains: trimmedQuery } },
-            { whatsappNumber: { contains: trimmedQuery } },
-            { deliveryContactNumber: { contains: trimmedQuery } },
-            { district: { contains: trimmedQuery } },
+            { studentId: matches },
+            { fullName: matches },
+            { whatsappNumber: matches },
+            { deliveryContactNumber: matches },
+            { district: matches },
           ],
         }
       : {}),
