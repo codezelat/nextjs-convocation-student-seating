@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     referenceId?: string;
   } | null;
-  const referenceId = body?.referenceId?.trim();
+  const referenceId = typeof body?.referenceId === "string" ? body.referenceId.trim() : "";
 
   if (!referenceId) {
     return Response.json(

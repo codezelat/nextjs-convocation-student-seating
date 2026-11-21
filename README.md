@@ -154,7 +154,11 @@ The current database uses Prisma with SQLite for simple local operation:
 - Seed script: `prisma/seed.ts`
 - Local database: `prisma/dev.db`, ignored by Git
 
-Production uses the matching MySQL schema in `prisma/schema.mysql.prisma`. The certificate migration is additive and does not alter existing seating or admin records.
+The existing MySQL deployment uses `prisma/schema.mysql.prisma`. The certificate migration is additive and does not alter existing seating or admin records.
+
+The Vercel build uses `prisma/postgres/schema.prisma` and its separate PostgreSQL migration history. Configure `DATABASE_URL_POOLED` for runtime queries and use `DATABASE_URL_DIRECT` locally for migration and import. Apply the schema using `npm run db:migrate:postgres` before enabling production traffic. Keep `.env.production` out of Git and keep the direct database credential out of the Vercel runtime.
+
+To import existing data, generate the PostgreSQL client and run `node --env-file=.env.production --import tsx scripts/import-neon-snapshot.ts /path/to/private-snapshot.json`. The snapshot contains `seats` and `certificateRequests` arrays with original Prisma column values, including exact timestamps in ISO 8601 and nullable fields. A legacy seat export can omit the two status columns if it predates seat archiving. The import verifies every field in the same transaction and accepts a rerun when the database already matches the snapshot.
 
 ## SEO, Privacy, And Sharing
 
@@ -191,6 +195,10 @@ Before publishing:
 - Confirm `/robots.txt` allows social preview crawling while admin/API routes remain blocked.
 - Verify the private B2 bucket is reachable with the configured application key.
 - Submit, edit, download, and delete one certificate request, then confirm its B2 object is removed.
+
+For Cloudflare R2, configure the `R2_*` variables with a credential scoped to a private bucket and set `RECEIPT_STORAGE_PROVIDER=R2`. Set a one-day expiration for the `pending-certificate-receipts/` prefix only. The production form splits receipts above 4 MiB on Vercel to keep the existing 5 MB allowance. The application removes staged fragments after successful submissions, and the bucket rule removes fragments from interrupted attempts.
+
+Before switching storage, run `node --env-file=.env.production --import tsx scripts/copy-receipts-to-r2.ts`. It copies the receipt keys, verifies the bytes and response metadata, and leaves the source objects in Backblaze. Before the final copy, pause writes to the old app, confirm both the record counts and the receipt keys, and retain the source until the new deployment passes the live checks.
 
 ## License
 

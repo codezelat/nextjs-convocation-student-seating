@@ -7,9 +7,10 @@ import {
   createCertificateRequest,
   findCertificateRequestByStudentId,
 } from "@/lib/data/certificate-requests";
+import { joinReceiptChunks } from "@/lib/certificates/receipt-chunks";
 import { validateReceipt, ReceiptValidationError } from "@/lib/certificates/receipt";
 import { certificateRequestFieldsSchema } from "@/lib/certificates/validation";
-import { deleteReceipt, uploadReceipt } from "@/lib/storage/backblaze";
+import { deleteReceipt, uploadReceipt } from "@/lib/storage/receipts";
 
 export class CertificateSubmissionError extends Error {
   constructor(
@@ -23,7 +24,7 @@ export class CertificateSubmissionError extends Error {
 
 export async function submitCertificateRequest(
   formData: FormData,
-  options: { sourceHash?: string } = {}
+  options: { sourceHash?: string; receiptSource?: string } = {}
 ) {
   const parsed = certificateRequestFieldsSchema.safeParse({
     studentId: formData.get("studentId"),
@@ -68,9 +69,18 @@ export async function submitCertificateRequest(
     );
   }
 
+  const ticket = String(formData.get("receiptTicket") ?? "");
+  const combined = await joinReceiptChunks(file, ticket, options.receiptSource ?? options.sourceHash)
+    .catch(() => {
+      throw new CertificateSubmissionError(
+        "The receipt upload expired or could not be read. Please upload it again.",
+        400
+      );
+    });
+
   let receipt;
   try {
-    receipt = await validateReceipt(file);
+    receipt = await validateReceipt(combined.file);
   } catch (error) {
     if (error instanceof ReceiptValidationError) {
       throw new CertificateSubmissionError(error.message, 400, {
@@ -98,7 +108,7 @@ export async function submitCertificateRequest(
   }
 
   try {
-    return await createCertificateRequest({
+    const result = await createCertificateRequest({
       ...parsed.data,
       receiptObjectKey: objectKey,
       receiptFileName: receipt.originalFileName,
@@ -106,6 +116,10 @@ export async function submitCertificateRequest(
       receiptSizeBytes: receipt.size,
       sourceHash: options.sourceHash,
     });
+    if (combined.key) {
+      await deleteReceipt(combined.key).catch(() => {});
+    }
+    return result;
   } catch (error) {
     await deleteReceipt(objectKey).catch((cleanupError) => {
       console.error("Certificate receipt cleanup failed", cleanupError);

@@ -9,7 +9,7 @@ import {
   findCertificateReceiptById,
   updateCertificateRequest,
 } from "@/lib/data/certificate-requests";
-import { deleteReceipt } from "@/lib/storage/backblaze";
+import { deleteReceipt } from "@/lib/storage/receipts";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

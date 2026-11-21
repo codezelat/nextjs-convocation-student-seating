@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_SPLIT_RECEIPT_UPLOADS: process.env.VERCEL === "1" ? "1" : "0",
+  },
   async headers() {
     const securityHeaders = [
       {
@@ -27,6 +30,10 @@ const nextConfig: NextConfig = {
         value: "noindex, nofollow, noarchive",
       },
     ];
+    const privateHeaders = [
+      ...noIndexHeaders,
+      { key: "Cache-Control", value: "private, no-store, max-age=0" },
+    ];
 
     return [
       {
@@ -38,12 +45,20 @@ const nextConfig: NextConfig = {
         headers: noIndexHeaders,
       },
       {
+        source: "/api/admin/:path*",
+        headers: privateHeaders,
+      },
+      {
+        source: "/api/public/:path*",
+        headers: privateHeaders,
+      },
+      {
         source: "/hidden-admin/:path*",
-        headers: noIndexHeaders,
+        headers: privateHeaders,
       },
       {
         source: "/result/:path*",
-        headers: noIndexHeaders,
+        headers: privateHeaders,
       },
     ];
   },

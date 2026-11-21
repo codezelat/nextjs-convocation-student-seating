@@ -69,6 +69,18 @@ export async function findSeatByReference(referenceId: string) {
   return seat ? toSeatDto(seat) : null;
 }
 
+export async function findSeatForResult(referenceId: string) {
+  const raw = await findSeatByReference(referenceId);
+  if (raw || !referenceId.includes("%")) return raw;
+
+  try {
+    return findSeatByReference(decodeURIComponent(referenceId));
+  } catch (error) {
+    if (error instanceof URIError) return null;
+    throw error;
+  }
+}
+
 export async function findSeatById(id: string) {
   const seat = await db.studentSeat.findUnique({
     where: { id },
@@ -98,7 +110,7 @@ export async function listSeats({
     db.studentSeat.findMany({
       where,
       select: seatSelect,
-      orderBy: [{ sessionNo: "asc" }, { seatNo: "asc" }],
+      orderBy: [{ sessionNo: "asc" }, { seatNo: "asc" }, { id: "asc" }],
       skip: (safePage - 1) * safePageSize,
       take: safePageSize,
     }),
@@ -167,10 +179,10 @@ export async function saveSeat(input: SeatInput, id?: string) {
 
 export async function upsertSeats(inputs: SeatInput[]) {
   return db.$transaction(async (tx) => {
-    for (const input of inputs) {
-      await upsertActiveSeat(tx, toPrismaInput(input));
+    for (const seat of uniqueImportedSeats(inputs)) {
+      await upsertActiveSeat(tx, seat);
     }
-  });
+  }, { timeout: 45_000 });
 }
 
 export async function deleteSeat(id: string) {
@@ -178,13 +190,23 @@ export async function deleteSeat(id: string) {
 }
 
 export async function replaceSeats(inputs: SeatInput[]) {
+  const seats = uniqueImportedSeats(inputs).map((seat) => ({
+    ...seat,
+    activeReferenceKey: seat.referenceId,
+  }));
   return db.$transaction(async (tx) => {
     await tx.studentSeat.deleteMany();
-
-    for (const input of inputs) {
-      await upsertActiveSeat(tx, toPrismaInput(input));
-    }
+    await tx.studentSeat.createMany({ data: seats });
   });
+}
+
+function uniqueImportedSeats(inputs: SeatInput[]) {
+  const seats = new Map<string, Prisma.StudentSeatCreateInput>();
+  for (const input of inputs) {
+    const seat = toPrismaInput(input);
+    seats.set(seat.referenceId, seat);
+  }
+  return [...seats.values()];
 }
 
 /**

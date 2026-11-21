@@ -75,10 +75,11 @@ export function rateLimit(
 export function getClientSourceHash(request: Request): string | undefined {
   const forwardedFor = request.headers.get("x-forwarded-for");
 
-  const identifier =
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    forwardedFor?.split(",")[0]?.trim();
+  const identifier = process.env.VERCEL === "1"
+    ? request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim()
+    : request.headers.get("cf-connecting-ip")?.trim() ||
+      request.headers.get("x-real-ip")?.trim() ||
+      forwardedFor?.split(",")[0]?.trim();
 
   const secret = process.env.SESSION_SECRET;
 

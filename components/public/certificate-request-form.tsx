@@ -24,12 +24,15 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  MAX_RECEIPT_BYTES,
   MAX_RECEIPT_SIZE_LABEL,
+  RECEIPT_FIRST_CHUNK_BYTES,
   SRI_LANKA_DISTRICTS,
 } from "@/lib/certificates/constants";
 
 type SubmissionResponse = {
   ok?: boolean;
+  ticket?: string;
   error?: string;
   fieldErrors?: Record<string, string[] | undefined>;
 };
@@ -67,6 +70,27 @@ export function CertificateRequestForm({
     setPending(true);
 
     try {
+      const receipt = body.get("receipt");
+      if (receipt instanceof File && receipt.size > MAX_RECEIPT_BYTES) {
+        setFieldErrors({ receipt: ["Payment receipt must be 5 MB or smaller."] });
+        return;
+      }
+      if (
+        process.env.NEXT_PUBLIC_SPLIT_RECEIPT_UPLOADS === "1" &&
+        receipt instanceof File && receipt.size > RECEIPT_FIRST_CHUNK_BYTES
+      ) {
+        const tail = new FormData();
+        tail.set("tail", receipt.slice(RECEIPT_FIRST_CHUNK_BYTES), "fragment");
+        const upload = await fetch(endpoint, { method: "PUT", body: tail });
+        const staged = (await upload.json().catch(() => ({}))) as SubmissionResponse;
+        if (!upload.ok || !staged.ticket) {
+          setError(staged.error ?? "The receipt could not be uploaded. Please try again.");
+          return;
+        }
+        body.set("receipt", receipt.slice(0, RECEIPT_FIRST_CHUNK_BYTES, receipt.type), receipt.name);
+        body.set("receiptTicket", staged.ticket);
+      }
+
       const response = await fetch(endpoint, { method: "POST", body });
       const data = (await response.json().catch(() => ({}))) as SubmissionResponse;
 

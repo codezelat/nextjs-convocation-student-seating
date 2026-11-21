@@ -49,3 +49,4 @@ next-env.d.ts
 !prisma/migrations/
 !prisma/migrations/**
 !prisma/migrations/**/*.sql
+!prisma/postgres/migrations/**/*.sql

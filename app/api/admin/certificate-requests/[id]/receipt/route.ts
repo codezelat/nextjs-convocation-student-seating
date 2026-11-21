@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 
 import { verifyAdminToken } from "@/lib/auth/session";
 import { findCertificateReceiptById } from "@/lib/data/certificate-requests";
-import { getReceiptDownloadUrl } from "@/lib/storage/backblaze";
+import { getReceiptDownloadUrl } from "@/lib/storage/receipts";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

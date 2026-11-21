@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import sharp from "sharp";
 
-import { findSeatByReference } from "@/lib/data/seats";
+import { findSeatForResult } from "@/lib/data/seats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ let fontDataPromise: Promise<FontData> | undefined;
 
 export default async function Image({ params }: ImageProps) {
   const { referenceId } = await params;
-  const seat = await findSeatByReference(decodeURIComponent(referenceId));
+  const seat = await findSeatForResult(referenceId);
   const visitorSeats = seat?.balconyVisitorSeatNos.map(formatBalconySeat) ?? [];
   const stageName = formatStageName(seat?.stageAnnouncingName);
   const stageNameLines = wrapText(stageName, 18, 2);
