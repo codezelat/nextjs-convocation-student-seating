@@ -24,6 +24,7 @@ model StudentSeat {
   stageAnnouncingName   String   @db.VarChar(255)
   ticketCategory        String   @db.VarChar(8)
   balconyVisitorSeatNos String   @db.Text
+  programId             String?  @db.VarChar(32)
   status                String   @default("ACTIVE") @db.VarChar(16)
   activeReferenceKey    String?  @unique @db.VarChar(191)
   createdAt             DateTime @default(now())

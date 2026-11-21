@@ -133,9 +133,10 @@ export default async function DashboardPage({
             </div>
             <form className="flex max-w-xl flex-col gap-2 sm:flex-row">
               <Input
+                key={query}
                 name="q"
                 defaultValue={query}
-                placeholder="Search reference, student, name, seat"
+                placeholder="Search reference, student, name, seat, program"
               />
               <select
                 name="status"

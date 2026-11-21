@@ -29,7 +29,7 @@ export async function parseSeatWorkbook(buffer: ArrayBuffer) {
 }
 
 function normalizeCellValue(value: ExcelJS.CellValue) {
-  if (!value) {
+  if (value == null) {
     return "";
   }
 

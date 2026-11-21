@@ -1,4 +1,5 @@
 export type TicketCategory = "A" | "B" | "C";
+export const PROGRAM_ID_MAX_LENGTH = 32;
 
 export type SeatImportRow = {
   referenceId: string;
@@ -8,6 +9,7 @@ export type SeatImportRow = {
   stageAnnouncingName: string;
   ticketCategory: TicketCategory;
   balconyVisitorSeatNos: string[];
+  programId?: string | null;
 };
 
 export type SeatImportError = {
@@ -27,10 +29,11 @@ type ColumnMap = {
   seatNo?: number;
   stageAnnouncingName?: number;
   ticketCategory?: number;
+  programId?: number;
   visitorSeatIndexes: number[];
 };
 
-type RequiredColumn = keyof Omit<ColumnMap, "visitorSeatIndexes">;
+type RequiredColumn = keyof Omit<ColumnMap, "visitorSeatIndexes" | "programId">;
 
 const requiredColumns: RequiredColumn[] = [
   "sessionNo",
@@ -86,6 +89,7 @@ const headerAliases: Record<RequiredColumn, string[]> = {
 };
 
 const headerStopWords = new Set(["id", "no", "n", "number", "num"]);
+const programIdHeaders = new Set(["program", "programme", "programcode", "programmecode", "programid", "programmeid"]);
 
 export function ticketVisitorSeatCount(value: string): 0 | 1 | 2 {
   const ticket = value.trim().toUpperCase();
@@ -114,6 +118,9 @@ export function parseSeatRows(rawRows: unknown[][]): SeatImportResult {
   }
 
   const header = rawRows[0] ?? [];
+  if (header.filter((cell) => programIdHeaders.has(normalizeHeader(toCellText(cell)))).length > 1) {
+    return { rows: [], errors: [{ rowNumber: 1, message: "Use only one Program ID column." }] };
+  }
   const columns = buildColumnMap(header);
   const missingColumns = requiredColumns.filter((column) => columns[column] === undefined);
 
@@ -141,8 +148,14 @@ export function parseSeatRows(rawRows: unknown[][]): SeatImportResult {
       return;
     }
 
-    const row = parseSingleRow(rawRow, columns as Required<ColumnMap>);
+    const row = parseSingleRow(rawRow, columns as ColumnMap & Required<Pick<ColumnMap, RequiredColumn>>);
     if (isNonStudentNoteRow(row)) {
+      return;
+    }
+
+    const programCell = columns.programId === undefined ? undefined : rawRow[columns.programId];
+    if (programCell != null && typeof programCell !== "string" && typeof programCell !== "number") {
+      errors.push({ rowNumber, message: "Program ID must be entered as text or a number." });
       return;
     }
 
@@ -166,6 +179,11 @@ function buildColumnMap(header: unknown[]): ColumnMap {
 
   header.forEach((cell, index) => {
     const normalized = normalizeHeader(toCellText(cell));
+
+    if (programIdHeaders.has(normalized)) {
+      columns.programId = index;
+      return;
+    }
 
     for (const column of requiredColumns) {
       if (
@@ -197,8 +215,9 @@ function buildColumnMap(header: unknown[]): ColumnMap {
   return columns;
 }
 
-function parseSingleRow(rawRow: unknown[], columns: Required<ColumnMap>): SeatImportRow {
+function parseSingleRow(rawRow: unknown[], columns: ColumnMap & Required<Pick<ColumnMap, RequiredColumn>>): SeatImportRow {
   const ticketCategory = toCellText(rawRow[columns.ticketCategory]).toUpperCase();
+  const programId = columns.programId === undefined ? "" : toCellText(rawRow[columns.programId]);
 
   return {
     referenceId: toCellText(rawRow[columns.referenceId]),
@@ -210,6 +229,7 @@ function parseSingleRow(rawRow: unknown[], columns: Required<ColumnMap>): SeatIm
     balconyVisitorSeatNos: columns.visitorSeatIndexes
       .map((index) => toCellText(rawRow[index]))
       .filter(Boolean),
+    ...(programId && programId !== "-" && { programId }),
   };
 }
 
@@ -232,6 +252,10 @@ function validateSeatRow(row: SeatImportRow): string | null {
 
   if (!row.stageAnnouncingName) {
     return "Stage Announcing Name is required.";
+  }
+
+  if (row.programId && (row.programId.length > PROGRAM_ID_MAX_LENGTH || /[\p{Cc}\p{Bidi_Control}\p{Zl}\p{Zp}]/u.test(row.programId))) {
+    return `Program ID must be one line and at most ${PROGRAM_ID_MAX_LENGTH} characters.`;
   }
 
   let expectedVisitorSeats: number;
@@ -337,6 +361,7 @@ function isNonStudentNoteRow(row: SeatImportRow) {
     !row.studentId &&
     !row.seatNo &&
     !row.ticketCategory &&
+    !row.programId &&
     row.stageAnnouncingName
   );
 }

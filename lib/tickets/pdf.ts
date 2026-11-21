@@ -112,7 +112,13 @@ export async function renderETicket(seat: PublicSeatResult, certificateName?: st
   drawField(ctx, seat.studentId, { x: 157, y: 631, width: 298, height: 72, fontSize: 26 });
   drawField(ctx, String(visitorSeats.length), { x: 600, y: 629, width: 168, height: 57, fontSize: 39, align: "center" });
   drawField(ctx, `Category ${seat.ticketCategory}`, { x: 810, y: 629, width: 237, height: 57, fontSize: 33, align: "center" });
-  drawField(ctx, seat.sessionNo, { x: 1107, y: 724, width: 161, height: 42, fontSize: 27, align: "center", color: burgundy });
+  const session = seat.sessionNo.replace(/^session\b(?:\s+no\.?(?=\s|[:#-]))?\s*[:#-]?\s*/iu, "").trim();
+  drawField(ctx, session || seat.sessionNo, {
+    x: 1081, y: 592, width: 210, height: 106, fontSize: 101, align: "center", color: "#ffffff", weight: 700,
+  });
+  drawField(ctx, seat.programId || "-", {
+    x: 1106, y: 724, width: 162, height: 42, fontSize: 29, align: "center", color: burgundy,
+  });
   drawField(ctx, seat.seatNo, { x: 303, y: 825, width: 303, height: 83, fontSize: 45 });
   drawField(ctx, visitorSeats.map(visitorSeatLabel).join("  ·  ") || "No visitor seats", {
     x: 802, y: 825, width: 453, height: 83, fontSize: 35,

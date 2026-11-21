@@ -172,6 +172,7 @@ export function SeatsTable({
               <TableHead className="w-[110px]">Ticket</TableHead>
               <TableHead>Visitors</TableHead>
               <TableHead className="w-[110px]">Status</TableHead>
+              <TableHead>Program ID</TableHead>
               <TableHead className="w-[150px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -207,6 +208,9 @@ export function SeatsTable({
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={seat.status} />
+                </TableCell>
+                <TableCell className="max-w-40 whitespace-normal wrap-anywhere">
+                  <bdi>{seat.programId || "-"}</bdi>
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
@@ -328,6 +332,7 @@ function SeatDetailsDialog({ seat }: { seat: AdminSeatRow }) {
           <Detail label="Seat No" value={seat.seatNo} />
           <Detail label="Ticket" value={`Category ${seat.ticketCategory}`} />
           <Detail label="Status" value={seat.status === "OUTDATED" ? "Outdated" : "Active"} />
+          <Detail label="Program ID" value={seat.programId || "-"} />
           <div className="rounded-xl bg-muted/60 p-3 sm:col-span-2">
             <div className="text-xs font-medium uppercase text-muted-foreground">
               Balcony Visitors Seat No

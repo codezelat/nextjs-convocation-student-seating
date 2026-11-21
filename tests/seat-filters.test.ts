@@ -28,13 +28,14 @@ describe("seat where builder", () => {
     });
   });
 
-  it("searches across reference, student, seat and stage name", () => {
+  it("searches across reference, student, seat, stage name and program", () => {
     expect(buildSeatWhereInput({ query: "J10", status: "ALL" })).toEqual({
       OR: [
         { referenceId: { contains: "J10" } },
         { studentId: { contains: "J10" } },
         { seatNo: { contains: "J10" } },
         { stageAnnouncingName: { contains: "J10" } },
+        { programId: { contains: "J10" } },
       ],
     });
   });
@@ -49,6 +50,7 @@ describe("seat where builder", () => {
             { studentId: { contains: "J10" } },
             { seatNo: { contains: "J10" } },
             { stageAnnouncingName: { contains: "J10" } },
+            { programId: { contains: "J10" } },
           ],
         },
       ],

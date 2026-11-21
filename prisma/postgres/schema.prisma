@@ -25,6 +25,7 @@ model StudentSeat {
   stageAnnouncingName   String
   ticketCategory        String
   balconyVisitorSeatNos String
+  programId             String?
   status                String   @default("ACTIVE")
   activeReferenceKey    String?  @unique
   createdAt             DateTime @default(now())

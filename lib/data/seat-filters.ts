@@ -43,6 +43,7 @@ export function buildSeatWhereInput({
         { studentId: matches },
         { seatNo: matches },
         { stageAnnouncingName: matches },
+        { programId: matches },
       ],
     });
   }

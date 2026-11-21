@@ -1,11 +1,52 @@
 import { describe, expect, it } from "vitest";
+import ExcelJS from "exceljs";
 
+import { GET as downloadSampleWorkbook } from "@/app/api/sample-format/route";
+import { parseSeatWorkbook } from "@/lib/import/excel";
 import {
   parseSeatRows,
   ticketVisitorSeatCount,
 } from "@/lib/import/seat-workbook";
 
 describe("seat workbook import", () => {
+  it("round-trips the last Program ID column and preserves Excel text and zero", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await (await downloadSampleWorkbook()).arrayBuffer());
+    const sheet = workbook.worksheets[0];
+    expect(sheet.getRow(1).getCell(9).value).toBe("Program ID");
+    expect(sheet.getCell("I2").numFmt).toBe("@");
+    const sample = await parseSeatWorkbook(await workbook.xlsx.writeBuffer());
+    expect(sample.errors).toEqual([]);
+    expect(sample.rows.map((row) => row.programId)).toEqual(["PSY", undefined]);
+
+    sheet.getCell("I2").value = " 001 ";
+    sheet.getCell("I3").value = 0;
+    const imported = await parseSeatWorkbook(await workbook.xlsx.writeBuffer());
+    expect(imported.errors).toEqual([]);
+    expect(imported.rows.map((row) => row.programId)).toEqual(["001", "0"]);
+  });
+
+  it("validates Program ID without treating it as a visitor seat", () => {
+    const header = ["Session", "Reference", "Student ID", "Seat No", "Stage Name", "Ticket", "Balcony Visitor Seat", "Programme ID"];
+    const row = [1, "J1001", "S001", 101, "Sample Graduate", "B", "Balcony 101"];
+    const result = parseSeatRows([
+      header,
+      [...row, " PSY-01 "],
+      [...row, "-"],
+      [...row, "P".repeat(33)],
+      [...row, "PSY\n01"],
+      [...row, { formula: "A2" }],
+    ]);
+    expect(result.rows.map((item) => [item.programId, item.balconyVisitorSeatNos])).toEqual([
+      ["PSY-01", ["Balcony 101"]],
+      [undefined, ["Balcony 101"]],
+    ]);
+    expect(result.errors.map((error) => error.rowNumber)).toEqual([4, 5, 6]);
+    expect(parseSeatRows([[...header, "Program ID"], row]).errors).toEqual([
+      { rowNumber: 1, message: "Use only one Program ID column." },
+    ]);
+  });
+
   it("normalizes legacy SITC sheet headers and blank second visitor seat header", () => {
     const result = parseSeatRows([
       [

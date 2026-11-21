@@ -37,6 +37,7 @@ export default async function Image({ params }: ImageProps) {
     fonts,
     referenceId: seat?.referenceId ?? referenceId.toUpperCase(),
     sessionNo: seat?.sessionNo ?? "-",
+    programId: seat?.programId || "-",
     ticket: seat ? `Category ${seat.ticketCategory}` : "-",
     seatNo: seat?.seatNo ?? "--",
     visitorSeats,
@@ -69,6 +70,7 @@ function renderTicketSvg({
   fonts,
   referenceId,
   sessionNo,
+  programId,
   ticket,
   seatNo,
   visitorSeats,
@@ -78,12 +80,14 @@ function renderTicketSvg({
   fonts: FontData;
   referenceId: string;
   sessionNo: string;
+  programId: string;
   ticket: string;
   seatNo: string;
   visitorSeats: string[];
   stageNameLines: string[];
   stageNameSize: number;
 }) {
+  const programIdFontSize = Math.min(24, Math.floor(260 / splitGraphemes(programId).length));
   const nameTspans = stageNameLines
     .map(
       (line, index) =>
@@ -167,6 +171,8 @@ function renderTicketSvg({
   <text x="838" y="196" class="white-number">${escapeXml(seatNo)}</text>
   <text x="838" y="246" class="white-small">VISITOR SEATS</text>
   ${visitorSeatNodes}
+  <text x="838" y="407" class="white-small">PROGRAM ID</text>
+  <text x="838" y="434" font-size="${programIdFontSize}" font-weight="700" fill="#ffffff">${escapeXml(programId)}</text>
 
   <g transform="translate(838 451)">
     ${Array.from({ length: 8 })

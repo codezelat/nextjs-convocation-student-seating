@@ -61,6 +61,7 @@ function toPrismaInput(row: Awaited<ReturnType<typeof parseSeatWorkbook>>["rows"
     stageAnnouncingName: row.stageAnnouncingName,
     ticketCategory: row.ticketCategory,
     balconyVisitorSeatNos: JSON.stringify(row.balconyVisitorSeatNos),
+    programId: row.programId,
   };
 }
 

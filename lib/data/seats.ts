@@ -27,6 +27,7 @@ export type PublicSeatResult = {
   stageAnnouncingName: string;
   ticketCategory: TicketCategory;
   balconyVisitorSeatNos: string[];
+  programId: string | null;
 };
 
 export type AdminSeatRow = PublicSeatResult & {
@@ -52,6 +53,7 @@ const seatSelect = {
   stageAnnouncingName: true,
   ticketCategory: true,
   balconyVisitorSeatNos: true,
+  programId: true,
   status: true,
   createdAt: true,
   updatedAt: true,
@@ -352,6 +354,7 @@ function toPrismaInput(input: SeatInput): Prisma.StudentSeatCreateInput {
     stageAnnouncingName: input.stageAnnouncingName,
     ticketCategory: input.ticketCategory,
     balconyVisitorSeatNos: JSON.stringify(input.balconyVisitorSeatNos),
+    programId: input.programId,
   };
 }
 
@@ -364,6 +367,7 @@ function toSeatDto(seat: {
   stageAnnouncingName: string;
   ticketCategory: string;
   balconyVisitorSeatNos: string;
+  programId: string | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;

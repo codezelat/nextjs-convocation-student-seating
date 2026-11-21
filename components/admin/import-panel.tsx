@@ -80,7 +80,8 @@ export function ImportPanel({ chrome = "card" }: { chrome?: "card" | "plain" }) 
               }
             />
             <FieldDescription>
-              Use the same format as the supplied SITC seating sheet.
+              Program ID is the optional last column. In update mode, a blank
+              Program ID keeps the existing value.
             </FieldDescription>
           </Field>
           <Field>

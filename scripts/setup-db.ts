@@ -29,6 +29,9 @@ const seatStatusMigrationPath = path.join(
   "000003_seat_status",
   "migration.sql"
 );
+const programIdMigrationPath = path.join(
+  process.cwd(), "prisma", "migrations", "000004_student_program_id", "migration.sql"
+);
 
 fs.mkdirSync(path.dirname(resolvedDbPath), { recursive: true });
 
@@ -52,12 +55,14 @@ if (!hasCertificateRequestTable) {
   db.exec(fs.readFileSync(certificateMigrationPath, "utf8"));
 }
 
-const hasSeatStatusColumn = db
-  .prepare("SELECT name FROM pragma_table_info('StudentSeat') WHERE name = ?")
-  .get("status");
+const findSeatColumn = db.prepare("SELECT name FROM pragma_table_info('StudentSeat') WHERE name = ?");
 
-if (!hasSeatStatusColumn) {
+if (!findSeatColumn.get("status")) {
   db.exec(fs.readFileSync(seatStatusMigrationPath, "utf8"));
+}
+
+if (!findSeatColumn.get("programId")) {
+  db.exec(fs.readFileSync(programIdMigrationPath, "utf8"));
 }
 
 db.close();

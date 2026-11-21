@@ -15,6 +15,7 @@ const seat = z.strictObject({
   stageAnnouncingName: text,
   ticketCategory: text,
   balconyVisitorSeatNos: text,
+  programId: text.nullable().optional(),
   status: z.enum(["ACTIVE", "OUTDATED"]).optional(),
   activeReferenceKey: text.nullable().optional(),
   createdAt: date,
@@ -74,7 +75,7 @@ async function main() {
     if (row.activeReferenceKey !== undefined && row.activeReferenceKey !== expectedKey) {
       throw new Error("The source has an inconsistent active reference key. No rows were written.");
     }
-    return { ...row, status, activeReferenceKey: expectedKey };
+    return { ...row, programId: row.programId ?? null, status, activeReferenceKey: expectedKey };
   });
   const certificates = data.data.certificateRequests;
 

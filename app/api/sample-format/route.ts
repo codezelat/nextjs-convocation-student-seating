@@ -18,11 +18,12 @@ export async function GET() {
     { header: "Ticket", key: "ticket", width: 10 },
     { header: "Balcony Visitors Seat No", key: "visitorSeat1", width: 24 },
     { header: "Balcony Visitors Seat No 2", key: "visitorSeat2", width: 24 },
+    { header: "Program ID", key: "programId", width: 16, style: { numFmt: "@" } },
   ];
 
   sheet.addRows([
-    [1, "J1001", "PSBU/SITC/DIP/SAMPLE/001", 101, "Sample Graduate One", "B", "Balcony 101", ""],
-    [1, "J1002", "PSBU/SITC/DIP/SAMPLE/002", 102, "Sample Graduate Two", "C", "Balcony 102", "Balcony 103"],
+    [1, "J1001", "PSBU/SITC/DIP/SAMPLE/001", 101, "Sample Graduate One", "B", "Balcony 101", "", "PSY"],
+    [1, "J1002", "PSBU/SITC/DIP/SAMPLE/002", 102, "Sample Graduate Two", "C", "Balcony 102", "Balcony 103", ""],
   ]);
 
   const header = sheet.getRow(1);

@@ -194,6 +194,7 @@ tests/
 - `stageAnnouncingName` (String) — Sinhala name
 - `ticketCategory` (String: A/B/C, indexed)
 - `balconyVisitorSeatNos` (String — JSON array of seat strings)
+- `programId` (String?, optional) — shown on seating results and e-tickets. It is the final sample workbook column. A blank value in an upsert workbook preserves the existing ID.
 - `status` (String: ACTIVE/OUTDATED, default ACTIVE, indexed)
 - `activeReferenceKey` (String?, unique) — referenceId when ACTIVE, NULL when OUTDATED
 - `createdAt` / `updatedAt` (DateTime)

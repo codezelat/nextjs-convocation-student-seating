@@ -67,6 +67,7 @@ export async function saveSeatAction(formData: FormData) {
       "Ticket",
       "Balcony Visitors Seat No",
       "Balcony Visitors Seat No 2",
+      "Program ID",
     ],
     [
       formData.get("sessionNo"),
@@ -77,6 +78,7 @@ export async function saveSeatAction(formData: FormData) {
       formData.get("ticketCategory"),
       formData.get("balconyVisitorSeatNo1"),
       formData.get("balconyVisitorSeatNo2"),
+      formData.get("programId"),
     ],
   ]);
 
@@ -91,7 +93,9 @@ export async function saveSeatAction(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim() || undefined;
 
   try {
-    await saveSeat(result.rows[0], id);
+    const row = result.rows[0];
+    const programId = id && formData.has("programId") ? row.programId ?? null : row.programId;
+    await saveSeat({ ...row, programId }, id);
   } catch (error) {
     if (error instanceof SeatConflictError) {
       redirect(`/hidden-admin/dashboard?error=${encodeURIComponent(error.message)}`);

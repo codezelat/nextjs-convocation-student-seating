@@ -12,6 +12,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { AdminSeatRow } from "@/lib/data/seats";
+import { PROGRAM_ID_MAX_LENGTH } from "@/lib/import/seat-workbook";
 
 export function SeatForm({
   seat,
@@ -80,6 +81,17 @@ export function SeatForm({
             id="balconyVisitorSeatNo2"
             name="balconyVisitorSeatNo2"
             defaultValue={seat?.balconyVisitorSeatNos[1]}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="programId">Program ID (optional)</FieldLabel>
+          <Input
+            id="programId"
+            name="programId"
+            defaultValue={seat?.programId ?? ""}
+            placeholder="e.g. PSY"
+            maxLength={PROGRAM_ID_MAX_LENGTH}
+            spellCheck={false}
           />
         </Field>
       </FieldGroup>

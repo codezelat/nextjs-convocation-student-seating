@@ -134,10 +134,11 @@ export default async function ResultPage({
                 Download e-ticket
               </Button>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <InfoTile label="Session No" value={seat.sessionNo} />
                 <InfoTile label="Student ID" value={seat.studentId} />
                 <InfoTile label="Seat No" value={seat.seatNo} />
+                <InfoTile label="Program ID" value={seat.programId || "-"} />
               </div>
 
               <Separator />
@@ -200,7 +201,7 @@ function InfoTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-muted/60 p-4 text-left">
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
-      <div className="mt-2 break-words text-lg font-semibold">{value}</div>
+      <div className="mt-2 text-lg font-semibold wrap-anywhere"><bdi>{value}</bdi></div>
     </div>
   );
 }
