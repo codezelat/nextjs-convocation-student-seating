@@ -80,6 +80,18 @@ export async function findCertificateRequestByStudentId(studentId: string) {
   });
 }
 
+export async function findVerifiedCertificateName(studentId: string) {
+  const request = await db.certificateRequest.findUnique({
+    where: {
+      studentId: studentId.trim().toUpperCase(),
+      status: { in: ["VERIFIED", "PREPARING", "DISPATCHED"] },
+    },
+    select: { fullName: true },
+  });
+
+  return request?.fullName ?? null;
+}
+
 export async function findCertificateRequestById(id: string) {
   return db.certificateRequest.findUnique({
     where: { id },

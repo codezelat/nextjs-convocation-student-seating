@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, TicketIcon, UserIcon, UsersIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, TicketIcon, UserIcon, UsersIcon } from "lucide-react";
 import { cache } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
@@ -125,6 +125,15 @@ export default async function ResultPage({
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
+              <Button
+                nativeButton={false}
+                render={<a href={`/result/${encodeURIComponent(seat.referenceId)}/e-ticket`} download />}
+                className="min-h-14 w-full gap-2.5 rounded-xl bg-emerald-700 px-5 text-base font-semibold text-white shadow-sm hover:bg-emerald-800 focus-visible:ring-emerald-600/50 dark:bg-emerald-400 dark:text-emerald-950 dark:hover:bg-emerald-300"
+              >
+                <DownloadIcon aria-hidden="true" className="size-5" />
+                Download e-ticket
+              </Button>
+
               <div className="grid gap-3 sm:grid-cols-3">
                 <InfoTile label="Session No" value={seat.sessionNo} />
                 <InfoTile label="Student ID" value={seat.studentId} />

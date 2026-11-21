@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["skia-canvas"],
+  outputFileTracingIncludes: {
+    "/result/\\[referenceId\\]/e-ticket": [
+      "./lib/tickets/assets/**/*",
+      "./public/fonts/NotoSansSinhala-*.ttf",
+      "./node_modules/skia-canvas/**/*.node",
+    ],
+  },
   env: {
     NEXT_PUBLIC_SPLIT_RECEIPT_UPLOADS: process.env.VERCEL === "1" ? "1" : "0",
   },
