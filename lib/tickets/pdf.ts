@@ -97,7 +97,7 @@ function visitorSeatLabel(seat: string) {
   return /\bbalcony\b/iu.test(seat) ? seat : `Balcony ${seat}`;
 }
 
-export async function renderETicket(seat: PublicSeatResult, certificateName?: string) {
+export async function renderETicket(seat: PublicSeatResult) {
   const template = await loadTemplate();
   const canvas = new Canvas(pageWidth, pageHeight, { gpu: false });
   const ctx = canvas.getContext("2d");
@@ -123,8 +123,7 @@ export async function renderETicket(seat: PublicSeatResult, certificateName?: st
     x: 802, y: 825, width: 453, height: 83, fontSize: 35,
   });
 
-  const verifiedName = cleanText(certificateName ?? "");
-  drawField(ctx, verifiedName || seat.stageAnnouncingName, {
+  drawField(ctx, "According to PSB University Database", {
     x: 490, y: 1615, width: 757, height: 55, fontSize: 33,
   });
   drawField(ctx, seat.stageAnnouncingName, { x: 490, y: 1714, width: 757, height: 69, fontSize: 37 });

@@ -23,7 +23,7 @@ export async function GET(
     import("@/lib/tickets/pdf"),
   ]);
   const name = verifiedName?.trim() || undefined;
-  const pdf = await renderETicket(seat, name);
+  const pdf = await renderETicket(seat);
   return new Response(new Uint8Array(pdf), {
     headers: {
       ...privateHeaders,
