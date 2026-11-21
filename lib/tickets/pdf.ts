@@ -17,7 +17,6 @@ const pageWidth = 148 * pointsPerMillimetre;
 const pageHeight = 210 * pointsPerMillimetre;
 const scale = Math.min(pageWidth / templateWidth, pageHeight / templateHeight);
 const ink = "#0b233c";
-const mutedInk = "#475569";
 const burgundy = "#790f2f";
 const registerFonts = FontLibrary.use.bind(FontLibrary);
 
@@ -125,9 +124,8 @@ export async function renderETicket(seat: PublicSeatResult, certificateName?: st
   });
 
   const verifiedName = cleanText(certificateName ?? "");
-  drawField(ctx, verifiedName || "Not available", {
+  drawField(ctx, verifiedName || seat.stageAnnouncingName, {
     x: 490, y: 1615, width: 757, height: 55, fontSize: 33,
-    color: verifiedName ? ink : mutedInk,
   });
   drawField(ctx, seat.stageAnnouncingName, { x: 490, y: 1714, width: 757, height: 69, fontSize: 37 });
   drawField(ctx, `Ref. ${seat.referenceId}`, {
